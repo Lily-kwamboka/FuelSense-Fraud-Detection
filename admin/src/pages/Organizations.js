@@ -164,7 +164,7 @@ export default function Organizations({ api, session }) {
       {showForm && (
         <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #e0e0e0' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a2e', marginBottom: '4px' }}>🏢 Onboard New Client Organization</div>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>Creates the org. Invite the owner via Supabase Auth separately.</div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>Creates the org. An invite will be sent automatically to the owner.</div>
           {error && <div style={{ background: '#fdecea', color: '#721c24', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             <div>
@@ -194,7 +194,7 @@ export default function Organizations({ api, session }) {
             </div>
           </div>
           <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '12px 14px', fontSize: '12px', color: '#0369a1', marginBottom: '16px' }}>
-            ℹ️ After creating the org, go to <strong>Supabase Auth → Invite User</strong> and invite the owner email. Then update their <code>user_profiles</code> row: set <code>role = 'owner'</code> and <code>organization_id</code> to the new org's ID.
+            ℹ️ An invite email will be sent automatically to the owner. They'll click the link, set a password, and be linked as the owner of this organization automatically.
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleCreate} disabled={saving} style={{ padding: '9px 20px', background: saving ? '#888' : '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '600' }}>
