@@ -1,15 +1,15 @@
 require('dotenv').config();
 'use strict';
 
-const express    = require('express');
-const cors       = require('cors');
+const express = require('express');
+const cors = require('cors');
 const { Client } = require('pg');
 const { getAlerts, acknowledgeAlert, checkHighWaterAlert, checkLowStockAlert } = require('./alerts');
 const { openShift, closeShift, getAllShifts, getShifts } = require('./shift-manager');
 const { Resend } = require('resend');
 
-const app          = express();
-const PORT         = process.env.API_PORT || 3001;
+const app = express();
+const PORT = process.env.API_PORT || 3001;
 const DATABASE_URL = process.env.DATABASE_URL;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,8 +48,10 @@ async function getDb() {
 
 // ── Role access levels ────────────────────────────────────────────────────────
 function getRoleAccessLevel(role) {
-  return { owner: 100, headquarters: 80, supervisor: 70, compliance_officer: 65,
-           station_manager: 50, shift_supervisor: 30, attendant: 10 }[role] || 0;
+  return {
+    owner: 100, headquarters: 80, supervisor: 70, compliance_officer: 65,
+    station_manager: 50, shift_supervisor: 30, attendant: 10
+  }[role] || 0;
 }
 
 // ── Multi-tenant: resolve caller's organization_id from supabase_uid ─────────
@@ -73,8 +75,8 @@ async function isSuperAdmin(db, email) {
 }
 
 // ── Utility endpoints ─────────────────────────────────────────────────────────
-app.get('/api/ping',   (req, res) => res.json({ message: 'pong', timestamp: new Date().toISOString() }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok',   timestamp: new Date().toISOString() }));
+app.get('/api/ping', (req, res) => res.json({ message: 'pong', timestamp: new Date().toISOString() }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // ── GET /api/user-profile ─────────────────────────────────────────────────────
 app.get('/api/user-profile', async (req, res) => {
@@ -103,11 +105,11 @@ app.get('/api/user-profile', async (req, res) => {
 app.get('/api/stations', async (req, res) => {
   try {
     const client = await getDb();
-    const user   = await resolveUser(client, req.query.uid);
+    const user = await resolveUser(client, req.query.uid);
 
     if (!user || !user.orgId) return res.json([]);
 
-    let query  = `SELECT id, name, location FROM stations WHERE organization_id = $1`;
+    let query = `SELECT id, name, location FROM stations WHERE organization_id = $1`;
     const params = [user.orgId];
 
     // Station-scoped roles: only see their assigned station
@@ -127,8 +129,8 @@ app.get('/api/stations', async (req, res) => {
 // ── GET /api/tanks ────────────────────────────────────────────────────────────
 app.get('/api/tanks', async (req, res) => {
   try {
-    const client    = await getDb();
-    const user      = await resolveUser(client, req.query.uid);
+    const client = await getDb();
+    const user = await resolveUser(client, req.query.uid);
     const stationId = req.query.station_id;
 
     if (!user || !user.orgId) return res.json([]);
@@ -188,8 +190,8 @@ app.get('/api/tanks/:id/readings', async (req, res) => {
 // ── GET /api/deliveries ───────────────────────────────────────────────────────
 app.get('/api/deliveries', async (req, res) => {
   try {
-    const client    = await getDb();
-    const user      = await resolveUser(client, req.query.uid);
+    const client = await getDb();
+    const user = await resolveUser(client, req.query.uid);
     const stationId = req.query.station_id;
 
     if (!user || !user.orgId) return res.json([]);
@@ -253,7 +255,7 @@ app.post('/api/deliveries', async (req, res) => {
   if (!tank_id || !supplier_name || !bol_number || !bol_nsv_litres)
     return res.status(400).json({ error: 'Missing required fields' });
   try {
-    const client     = await getDb();
+    const client = await getDb();
     const readingRes = await client.query(
       `SELECT id, nsv_litres FROM atg_readings WHERE tank_id = $1 ORDER BY recorded_at DESC LIMIT 1`,
       [tank_id]
@@ -278,8 +280,8 @@ app.post('/api/deliveries', async (req, res) => {
 // ── GET /api/reconciliation ───────────────────────────────────────────────────
 app.get('/api/reconciliation', async (req, res) => {
   try {
-    const client    = await getDb();
-    const user      = await resolveUser(client, req.query.uid);
+    const client = await getDb();
+    const user = await resolveUser(client, req.query.uid);
     const stationId = req.query.station_id;
 
     if (!user || !user.orgId) return res.json([]);
@@ -318,8 +320,8 @@ app.post('/api/reconciliation/pump-sales', async (req, res) => {
   if (!tank_id || !recon_date || pump_sales_litres === undefined)
     return res.status(400).json({ error: 'Missing required fields' });
   try {
-    const client   = await getDb();
-    const openRes  = await client.query(
+    const client = await getDb();
+    const openRes = await client.query(
       `SELECT nsv_litres FROM atg_readings WHERE tank_id=$1 AND recorded_at::date=$2::date ORDER BY recorded_at ASC  LIMIT 1`, [tank_id, recon_date]);
     const closeRes = await client.query(
       `SELECT nsv_litres FROM atg_readings WHERE tank_id=$1 AND recorded_at::date=$2::date ORDER BY recorded_at DESC LIMIT 1`, [tank_id, recon_date]);
@@ -327,17 +329,17 @@ app.post('/api/reconciliation/pump-sales', async (req, res) => {
     if (!openRes.rows.length || !closeRes.rows.length)
       return res.status(400).json({ error: 'No readings found for this tank on this date' });
 
-    const openNSV  = parseFloat(openRes.rows[0].nsv_litres);
+    const openNSV = parseFloat(openRes.rows[0].nsv_litres);
     const closeNSV = parseFloat(closeRes.rows[0].nsv_litres);
     const delivRes = await client.query(
       `SELECT COALESCE(SUM(received_nsv_litres), 0) AS total FROM deliveries
         WHERE tank_id=$1 AND status IN ('confirmed','flagged') AND stabilisation_at::date=$2::date`,
       [tank_id, recon_date]
     );
-    const delivNSV  = parseFloat(delivRes.rows[0].total) || 0;
-    const sales     = parseFloat(pump_sales_litres);
-    const theoCl    = openNSV + delivNSV - sales;
-    const variance  = closeNSV - theoCl;
+    const delivNSV = parseFloat(delivRes.rows[0].total) || 0;
+    const sales = parseFloat(pump_sales_litres);
+    const theoCl = openNSV + delivNSV - sales;
+    const variance = closeNSV - theoCl;
 
     await client.query(
       `INSERT INTO daily_reconciliation (tank_id, recon_date, opening_nsv, closing_nsv, deliveries_nsv, pump_sales_litres, theoretical_closing, variance_litres)
@@ -469,10 +471,10 @@ app.post('/api/audit-log', async (req, res) => {
     await client.query(
       `INSERT INTO audit_log (user_email, user_role, action, entity_type, entity_id, station_id, old_value, new_value, ip_address)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [user_email, user_role||null, action, entity_type, entity_id||null, station_id||null,
-       old_value ? JSON.stringify(old_value) : null,
-       new_value ? JSON.stringify(new_value) : null,
-       req.headers['x-forwarded-for'] || req.socket.remoteAddress || null]
+      [user_email, user_role || null, action, entity_type, entity_id || null, station_id || null,
+        old_value ? JSON.stringify(old_value) : null,
+        new_value ? JSON.stringify(new_value) : null,
+        req.headers['x-forwarded-for'] || req.socket.remoteAddress || null]
     );
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -505,7 +507,7 @@ app.get('/api/plans', async (req, res) => {
 app.get('/api/subscription', async (req, res) => {
   try {
     const client = await getDb();
-    const uid       = req.query.uid;
+    const uid = req.query.uid;
     const stationId = req.query.station_id;
 
     let orgId = null;
@@ -564,7 +566,7 @@ app.post('/api/payments/initiate', async (req, res) => {
   if (!station_id || !plan_id || !billing_cycle || !user_email)
     return res.status(400).json({ error: 'Missing required fields' });
   try {
-    const client  = await getDb();
+    const client = await getDb();
     const pesapal = require('./pesapal');
     let plan, amount, isTest = false;
 
@@ -612,9 +614,9 @@ app.post('/api/payments/initiate', async (req, res) => {
 app.get('/api/payments/callback', async (req, res) => {
   const { OrderTrackingId, OrderMerchantReference } = req.query;
   try {
-    const client  = await getDb();
+    const client = await getDb();
     const pesapal = require('./pesapal');
-    const status  = await pesapal.getTransactionStatus(OrderTrackingId);
+    const status = await pesapal.getTransactionStatus(OrderTrackingId);
 
     if (status.payment_status_description === 'Completed') {
       await client.query(
@@ -626,7 +628,7 @@ app.get('/api/payments/callback', async (req, res) => {
 
       if (payment && payment.plan_name !== 'TEST_PAYMENT') {
         const planRes = await client.query(`SELECT * FROM subscription_plans WHERE name=$1`, [payment.plan_name]);
-        const plan    = planRes.rows[0];
+        const plan = planRes.rows[0];
         if (plan) {
           const now = new Date(), end = new Date(now);
           payment.billing_cycle === 'annual' ? end.setFullYear(end.getFullYear() + 1) : end.setMonth(end.getMonth() + 1);
@@ -689,7 +691,7 @@ app.post('/api/payments/test', async (req, res) => {
   const { station_id, amount, user_email, user_name, phone } = req.body;
   if (!amount || !user_email) return res.status(400).json({ error: 'Missing required fields: amount, user_email' });
   try {
-    const client  = await getDb();
+    const client = await getDb();
     const pesapal = require('./pesapal');
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let realStationId = station_id;
@@ -712,8 +714,10 @@ app.post('/api/payments/test', async (req, res) => {
       description: `FuelSense Test Payment - KES ${amount}`,
       callback_url: process.env.FRONTEND_URL + '/payment-success',
       notification_id: ipnId,
-      billing_address: { email_address: user_email, phone_number: phone||'', country_code: 'KE',
-        first_name: user_name?.split(' ')[0]||'Customer', last_name: user_name?.split(' ')[1]||'' },
+      billing_address: {
+        email_address: user_email, phone_number: phone || '', country_code: 'KE',
+        first_name: user_name?.split(' ')[0] || 'Customer', last_name: user_name?.split(' ')[1] || ''
+      },
     });
     await client.query(`UPDATE payments SET pesapal_order_id=$1 WHERE id=$2`, [pesapalRes.order_tracking_id, paymentId]);
     res.json({ payment_id: paymentId, redirect_url: pesapalRes.redirect_url, amount });
@@ -761,7 +765,7 @@ app.post('/api/admin/organizations', async (req, res) => {
 
     // 2. Invite the owner via Supabase Auth (sends a real email with signup link)
     let inviteResult = null;
-    let inviteError  = null;
+    let inviteError = null;
 
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       try {
@@ -861,7 +865,7 @@ app.get('/api/admin/organizations/:id', async (req, res) => {
 app.put('/api/admin/user-profiles/:uid', async (req, res) => {
   const { admin_email, role, station_id } = req.body;
   try {
-    const client  = await getDb();
+    const client = await getDb();
     const isAdmin = await isSuperAdmin(client, admin_email);
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden: super admin only' });
     if (!role) return res.status(400).json({ error: 'role required' });
@@ -880,14 +884,14 @@ app.post('/api/stations', async (req, res) => {
   if (!uid || !name) return res.status(400).json({ error: 'uid and name required' });
   try {
     const client = await getDb();
-    const user   = await resolveUser(client, uid);
+    const user = await resolveUser(client, uid);
     if (!user || user.accessLevel < 100) return res.status(403).json({ error: 'Owner access required' });
 
     // Check station limit
     const org = await client.query(`SELECT max_stations FROM organizations WHERE id=$1`, [user.orgId]);
     const countRes = await client.query(`SELECT COUNT(*) AS count FROM stations WHERE organization_id=$1`, [user.orgId]);
     const current = parseInt(countRes.rows[0].count);
-    const maxSt   = org.rows[0]?.max_stations || 1;
+    const maxSt = org.rows[0]?.max_stations || 1;
     if (maxSt !== -1 && current >= maxSt)
       return res.status(403).json({ error: `Station limit reached (${maxSt}). Upgrade your plan to add more stations.` });
 
@@ -930,7 +934,7 @@ async function resolveAdminOrg(db, uid) {
 app.get('/api/admin/stations', async (req, res) => {
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, req.query.uid);
+    const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId) return res.json([]);
 
     const result = await client.query(`
@@ -952,12 +956,12 @@ app.post('/api/admin/stations', async (req, res) => {
   if (!name) return res.status(400).json({ error: 'Station name is required.' });
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, uid);
+    const orgId = await resolveAdminOrg(client, uid);
     if (!orgId) return res.status(400).json({ error: 'No organization found for this user.' });
 
     const countRes = await client.query(`SELECT COUNT(*) AS count FROM stations WHERE organization_id=$1`, [orgId]);
-    const orgRes   = await client.query(`SELECT max_stations FROM organizations WHERE id=$1`, [orgId]);
-    const maxSt    = orgRes.rows[0]?.max_stations ?? 1;
+    const orgRes = await client.query(`SELECT max_stations FROM organizations WHERE id=$1`, [orgId]);
+    const maxSt = orgRes.rows[0]?.max_stations ?? 1;
     if (maxSt !== -1 && parseInt(countRes.rows[0].count) >= maxSt) {
       return res.status(403).json({ error: `Station limit reached (${maxSt}). Upgrade your plan to add more stations.` });
     }
@@ -1001,8 +1005,8 @@ app.delete('/api/admin/stations/:id', async (req, res) => {
 // ── TANKS (admin CRUD) ────────────────────────────────────────────────────────
 app.get('/api/admin/tanks', async (req, res) => {
   try {
-    const client    = await getDb();
-    const orgId     = await resolveAdminOrg(client, req.query.uid);
+    const client = await getDb();
+    const orgId = await resolveAdminOrg(client, req.query.uid);
     const stationId = req.query.station_id;
     if (!orgId) return res.json([]);
 
@@ -1074,7 +1078,7 @@ app.delete('/api/admin/tanks/:id', async (req, res) => {
 app.get('/api/admin/users', async (req, res) => {
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, req.query.uid);
+    const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId) return res.json([]);
 
     const result = await client.query(`
@@ -1096,7 +1100,7 @@ app.post('/api/admin/users', async (req, res) => {
     return res.status(400).json({ error: 'Supabase UID, email and role are required.' });
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, uid);
+    const orgId = await resolveAdminOrg(client, uid);
     if (!orgId) return res.status(400).json({ error: 'No organization found for this user.' });
 
     const result = await client.query(
@@ -1140,7 +1144,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 app.get('/api/admin/suppliers', async (req, res) => {
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, req.query.uid);
+    const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId) return res.json([]);
 
     const result = await client.query(
@@ -1159,7 +1163,7 @@ app.post('/api/admin/suppliers', async (req, res) => {
   if (!name) return res.status(400).json({ error: 'Supplier name is required.' });
   try {
     const client = await getDb();
-    const orgId  = await resolveAdminOrg(client, uid);
+    const orgId = await resolveAdminOrg(client, uid);
     if (!orgId) return res.status(400).json({ error: 'No organization found for this user.' });
 
     const result = await client.query(
@@ -1262,75 +1266,149 @@ async function checkUpcomingRenewals() {
 }
 
 setInterval(checkExpiredSubscriptions, 60 * 60 * 1000);
-setInterval(checkUpcomingRenewals,     6  * 60 * 60 * 1000);
+setInterval(checkUpcomingRenewals, 6 * 60 * 60 * 1000);
 setTimeout(async () => { await checkExpiredSubscriptions(); await checkUpcomingRenewals(); }, 5000);
 
-// ── ATG Scheduler ─────────────────────────────────────────────────────────────
-setTimeout(async () => {
+// GET /api/admin/alert-config/:stationId
+app.get('/api/admin/alert-config/:stationId', async (req, res) => {
   try {
-    const { getInventory }  = require('./atg-client');
-    const { calculateNSV }  = require('./measurement-engine');
-    const tankState = {};
-    const DELIVERY_RISE_THRESHOLD = 50;
-    const STABLE_CYCLES_REQUIRED  = 10;
-
-    async function pollCycle() {
-      console.log('[scheduler] Poll cycle started at ' + new Date().toISOString());
-      let readings;
-      try { readings = await getInventory(); }
-      catch (err) { console.error('[scheduler] ATG error:', err.message); return; }
-
-      const client = await getDb();
-      for (const reading of readings) {
-        try {
-          const tankRes = await client.query('SELECT * FROM tanks WHERE tank_number=$1 LIMIT 1', [reading.tankNumber]);
-          if (!tankRes.rows[0]) { console.warn('[scheduler] No tank for probe ' + reading.tankNumber); continue; }
-          const t = tankRes.rows[0];
-          const volumes = await calculateNSV(client, t.id, reading.innageMm, reading.waterMm, reading.tempC);
-
-          await client.query(
-            `INSERT INTO atg_readings (id, tank_id, recorded_at, innage_mm, water_mm, temperature_c, tov_litres, water_litres, gov_litres, vcf, nsv_litres, is_locked)
-             VALUES (gen_random_uuid(),$1,NOW(),$2,$3,$4,$5,$6,$7,$8,$9,FALSE)`,
-            [t.id, reading.innageMm, reading.waterMm, reading.tempC,
-             volumes.tov_litres, volumes.water_litres, volumes.gov_litres, volumes.vcf, volumes.nsv_litres]
-          );
-          console.log('[scheduler] Saved | tank ' + t.tank_number + ' (' + reading.product + ') | innage: ' + reading.innageMm + 'mm | nsv: ' + volumes.nsv_litres + 'L');
-
-          const fillPct = (volumes.nsv_litres / parseFloat(t.capacity_litres)) * 100;
-          await checkHighWaterAlert(client, t.id, t.tank_number, reading.waterMm);
-          await checkLowStockAlert(client, t.id, t.tank_number, t.fuel_type, fillPct, parseFloat(t.low_stock_threshold_pct));
-
-          const state = tankState[t.id];
-          if (!state) { tankState[t.id] = { lastInnageMm: reading.innageMm, stableCycles: 0, deliveryId: null, deliveryStatus: 'none' }; continue; }
-          const delta = reading.innageMm - state.lastInnageMm;
-          if (delta > DELIVERY_RISE_THRESHOLD) {
-            state.stableCycles = 0;
-            if (state.deliveryStatus === 'none') {
-              const dRes = await client.query(
-                `INSERT INTO deliveries (id, tank_id, status, offload_started_at) VALUES (gen_random_uuid(),$1,'in_progress',NOW()) RETURNING id`,
-                [t.id]
-              );
-              state.deliveryId = dRes.rows[0].id; state.deliveryStatus = 'in_progress';
-              console.log('[scheduler] DELIVERY STARTED tank ' + t.tank_number);
-            }
-          } else if (state.deliveryStatus === 'in_progress') {
-            state.stableCycles++;
-            if (state.stableCycles >= STABLE_CYCLES_REQUIRED) {
-              await client.query(`UPDATE deliveries SET offload_ended_at=NOW(), status='awaiting_stabilisation' WHERE id=$1`, [state.deliveryId]);
-              state.deliveryStatus = 'awaiting_stabilisation'; state.stableCycles = 0;
-              console.log('[scheduler] OFFLOAD ENDED delivery ' + state.deliveryId);
-            }
-          }
-          state.lastInnageMm = reading.innageMm;
-        } catch (err) { console.error('[scheduler] Error processing tank ' + reading.tankNumber + ':', err.message); }
-      }
-      console.log('[scheduler] Poll cycle complete\n');
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM alert_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) {
+      return res.json({
+        station_id: req.params.stationId,
+        low_stock_threshold_pct: 20,
+        high_water_mm: 50,
+        reading_gap_minutes: 5,
+        stabilisation_timeout_hours: 14,
+        delivery_variance_tolerance_pct: 0.25,
+        notify_email: '',
+        notify_phone: '',
+        notify_on_low_stock: true,
+        notify_on_high_water: true,
+        notify_on_reading_gap: true,
+        notify_on_delivery_flagged: true,
+      });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] GET alert-config error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    await pollCycle();
-    setInterval(pollCycle, 60000);
-    console.log('[scheduler] Started inside API process ✓');
-  } catch (err) { console.error('[scheduler] Failed to start:', err.message); }
-}, 3000);
+// POST /api/admin/alert-config (create or update)
+app.post('/api/admin/alert-config', async (req, res) => {
+  const {
+    station_id,
+    low_stock_threshold_pct,
+    high_water_mm,
+    reading_gap_minutes,
+    stabilisation_timeout_hours,
+    delivery_variance_tolerance_pct,
+    notify_email,
+    notify_phone,
+    notify_on_low_stock,
+    notify_on_high_water,
+    notify_on_reading_gap,
+    notify_on_delivery_flagged,
+  } = req.body;
+
+  if (!station_id) return res.status(400).json({ error: 'station_id is required' });
+
+  try {
+    const client = await getDb();
+    // Upsert — create if not exists, update if exists
+    const result = await client.query(
+      `INSERT INTO alert_config (
+        station_id, low_stock_threshold_pct, high_water_mm,
+        reading_gap_minutes, stabilisation_timeout_hours,
+        delivery_variance_tolerance_pct, notify_email, notify_phone,
+        notify_on_low_stock, notify_on_high_water,
+        notify_on_reading_gap, notify_on_delivery_flagged, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+      ON CONFLICT (station_id) DO UPDATE SET
+        low_stock_threshold_pct = EXCLUDED.low_stock_threshold_pct,
+        high_water_mm = EXCLUDED.high_water_mm,
+        reading_gap_minutes = EXCLUDED.reading_gap_minutes,
+        stabilisation_timeout_hours = EXCLUDED.stabilisation_timeout_hours,
+        delivery_variance_tolerance_pct = EXCLUDED.delivery_variance_tolerance_pct,
+        notify_email = EXCLUDED.notify_email,
+        notify_phone = EXCLUDED.notify_phone,
+        notify_on_low_stock = EXCLUDED.notify_on_low_stock,
+        notify_on_high_water = EXCLUDED.notify_on_high_water,
+        notify_on_reading_gap = EXCLUDED.notify_on_reading_gap,
+        notify_on_delivery_flagged = EXCLUDED.notify_on_delivery_flagged,
+        updated_at = NOW()
+      RETURNING *`,
+      [
+        station_id,
+        low_stock_threshold_pct ?? 20,
+        high_water_mm ?? 50,
+        reading_gap_minutes ?? 5,
+        stabilisation_timeout_hours ?? 14,
+        delivery_variance_tolerance_pct ?? 0.25,
+        notify_email || null,
+        notify_phone || null,
+        notify_on_low_stock ?? true,
+        notify_on_high_water ?? true,
+        notify_on_reading_gap ?? true,
+        notify_on_delivery_flagged ?? true,
+      ]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] POST alert-config error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/reconciliation-config/:stationId
+app.get('/api/admin/reconciliation-config/:stationId', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM reconciliation_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) {
+      return res.json({
+        station_id: req.params.stationId,
+        default_tolerance_pct: 0.25,
+        stabilisation_std_dev_threshold: 0.3,
+        delivery_detection_threshold_mm: 50,
+        atg_polling_interval_seconds: 60,
+        stabilisation_timeout_hours: 14,
+      });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] GET reconciliation-config error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/reconciliation-config
+app.post('/api/admin/reconciliation-config', async (req, res) => {
+  const { station_id, default_tolerance_pct, stabilisation_std_dev_threshold, delivery_detection_threshold_mm, atg_polling_interval_seconds, stabilisation_timeout_hours } = req.body;
+  if (!station_id) return res.status(400).json({ error: 'station_id is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO reconciliation_config (station_id, default_tolerance_pct, stabilisation_std_dev_threshold, delivery_detection_threshold_mm, atg_polling_interval_seconds, stabilisation_timeout_hours, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())
+       ON CONFLICT (station_id) DO UPDATE SET
+         default_tolerance_pct=EXCLUDED.default_tolerance_pct,
+         stabilisation_std_dev_threshold=EXCLUDED.stabilisation_std_dev_threshold,
+         delivery_detection_threshold_mm=EXCLUDED.delivery_detection_threshold_mm,
+         atg_polling_interval_seconds=EXCLUDED.atg_polling_interval_seconds,
+         stabilisation_timeout_hours=EXCLUDED.stabilisation_timeout_hours,
+         updated_at=NOW()
+       RETURNING *`,
+      [station_id, default_tolerance_pct ?? 0.25, stabilisation_std_dev_threshold ?? 0.3, delivery_detection_threshold_mm ?? 50, atg_polling_interval_seconds ?? 60, stabilisation_timeout_hours ?? 14]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] POST reconciliation-config error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = app;
