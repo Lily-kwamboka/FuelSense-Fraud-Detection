@@ -1006,12 +1006,12 @@ app.delete('/api/admin/stations/:id', async (req, res) => {
     await client.query(`
         UPDATE shifts 
         SET opening_reading_id = NULL, closing_reading_id = NULL
-        WHERE station_id = $1`, [id]);
+        WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
 
     // Delete in correct order
     await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM shifts WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM shifts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
