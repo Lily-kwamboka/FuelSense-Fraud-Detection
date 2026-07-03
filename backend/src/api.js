@@ -995,9 +995,19 @@ app.put('/api/admin/stations/:id', async (req, res) => {
 app.delete('/api/admin/stations/:id', async (req, res) => {
   try {
     const client = await getDb();
-    await client.query(`DELETE FROM stations WHERE id=$1`, [req.params.id]);
+    const id = req.params.id;
+
+    // Delete in order to respect foreign key constraints
+    await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM stations WHERE id=$1`, [id]);
+
     res.json({ ok: true });
   } catch (err) {
+    console.error('[API] Delete station error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
