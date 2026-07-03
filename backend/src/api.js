@@ -1012,9 +1012,11 @@ app.delete('/api/admin/stations/:id', async (req, res) => {
     await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM shifts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM alerts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM subscriptions WHERE station_id=$1`, [id]);
     await client.query(`DELETE FROM stations WHERE id=$1`, [id]);
 
     res.json({ ok: true });
