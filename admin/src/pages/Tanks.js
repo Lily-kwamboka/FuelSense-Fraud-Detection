@@ -53,7 +53,7 @@ export default function Tanks({ api, session }) {
         setLoading(true);
         try {
             const [tanksRes, stationsRes, orgsRes] = await Promise.all([
-                fetch(`${api}/api/admin/tanks${filterStation ? '?station_id=' + filterStation : ''}`),
+                fetch(`${api}/api/tanks${filterStation ? '?station_id=' + filterStation : ''}`),
                 fetch(`${api}/api/admin/stations?uid=${encodeURIComponent(adminEmail)}`),
                 fetch(`${api}/api/admin/organizations?admin_email=${encodeURIComponent(adminEmail)}`),
             ]);
