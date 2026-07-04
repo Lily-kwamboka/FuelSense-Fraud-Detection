@@ -995,6 +995,9 @@ app.get('/api/admin/stations', async (req, res) => {
     const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId) return res.json([]);
 
+    // CHANGE 1: Add filterOrgId to allow organization filtering
+    const filterOrgId = req.query.organization_id || orgId;
+
     const result = await client.query(`
       SELECT s.id, s.name, s.location, s.organization_id,
        COUNT(t.id) AS tank_count
@@ -1002,7 +1005,7 @@ app.get('/api/admin/stations', async (req, res) => {
         LEFT JOIN tanks t ON t.station_id = s.id
        WHERE s.organization_id = $1
        GROUP BY s.id
-       ORDER BY s.name`, [orgId]);
+       ORDER BY s.name`, [filterOrgId]); // CHANGE 2: Use filterOrgId instead of orgId
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
