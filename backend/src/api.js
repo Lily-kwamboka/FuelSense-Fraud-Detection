@@ -1061,6 +1061,16 @@ app.post('/api/admin/tanks', async (req, res) => {
     return res.status(400).json({ error: 'station_id, tank_number, fuel_type and capacity_litres are required.' });
   try {
     const client = await getDb();
+    const orgId = await resolveAdminOrg(client, req.query.uid);
+    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
+
+    const stationCheck = await client.query(
+      `SELECT id FROM stations WHERE id = $1 AND organization_id = $2`,
+      [station_id, orgId]
+    );
+    if (!stationCheck.rows.length)
+      return res.status(403).json({ error: 'Station does not belong to your organization.' });
+
     const result = await client.query(
       `INSERT INTO tanks (station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -1076,12 +1086,17 @@ app.put('/api/admin/tanks/:id', async (req, res) => {
   const { tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct } = req.body;
   try {
     const client = await getDb();
+    const orgId = await resolveAdminOrg(client, req.query.uid);
+    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
+
     const result = await client.query(
-      `UPDATE tanks SET tank_number=$1, fuel_type=$2, capacity_litres=$3, fuel_density_at_15c=$4, low_stock_threshold_pct=$5
-       WHERE id=$6 RETURNING *`,
-      [tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, req.params.id]
+      `UPDATE tanks t SET tank_number=$1, fuel_type=$2, capacity_litres=$3, fuel_density_at_15c=$4, low_stock_threshold_pct=$5
+         FROM stations s
+        WHERE t.id=$6 AND t.station_id = s.id AND s.organization_id = $7
+      RETURNING t.*`,
+      [tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, req.params.id, orgId]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found' });
+    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found in your organization.' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1091,7 +1106,17 @@ app.put('/api/admin/tanks/:id', async (req, res) => {
 app.delete('/api/admin/tanks/:id', async (req, res) => {
   try {
     const client = await getDb();
-    await client.query(`DELETE FROM tanks WHERE id=$1`, [req.params.id]);
+    const orgId = await resolveAdminOrg(client, req.query.uid);
+    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
+
+    const result = await client.query(
+      `DELETE FROM tanks t
+        USING stations s
+       WHERE t.id = $1 AND t.station_id = s.id AND s.organization_id = $2
+      RETURNING t.id`,
+      [req.params.id, orgId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found in your organization.' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
