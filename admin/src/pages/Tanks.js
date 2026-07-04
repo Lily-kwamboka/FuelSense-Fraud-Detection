@@ -26,6 +26,7 @@ export default function Tanks({ api, session }) {
     const [uploadError, setUploadError] = useState('');
 
     const adminEmail = session?.user?.email || '';
+    const adminUid = session?.user?.id || '';
 
     const [form, setForm] = useState({
         organization_id: '',
@@ -54,7 +55,7 @@ export default function Tanks({ api, session }) {
         try {
             const [tanksRes, stationsRes, orgsRes] = await Promise.all([
                 fetch(`${api}/api/tanks${filterStation ? '?station_id=' + filterStation : ''}`),
-                fetch(`${api}/api/admin/stations?uid=${encodeURIComponent(adminEmail)}`),
+                fetch(`${api}/api/admin/stations?uid=${encodeURIComponent(adminUid)}`),
                 fetch(`${api}/api/admin/organizations?admin_email=${encodeURIComponent(adminEmail)}`),
             ]);
             const tanksData = await tanksRes.json();
