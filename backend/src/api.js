@@ -995,7 +995,7 @@ app.get('/api/admin/stations', async (req, res) => {
     const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId) return res.json([]);
 
-    // CHANGE 1: Add filterOrgId to allow organization filtering
+    // Add filterOrgId to allow organization filtering
     const filterOrgId = req.query.organization_id || orgId;
 
     const result = await client.query(`
@@ -1005,7 +1005,7 @@ app.get('/api/admin/stations', async (req, res) => {
         LEFT JOIN tanks t ON t.station_id = s.id
        WHERE s.organization_id = $1
        GROUP BY s.id
-       ORDER BY s.name`, [filterOrgId]); // CHANGE 2: Use filterOrgId instead of orgId
+       ORDER BY s.name`, [filterOrgId]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1013,11 +1013,12 @@ app.get('/api/admin/stations', async (req, res) => {
 });
 
 app.post('/api/admin/stations', async (req, res) => {
-  const { name, location, uid } = req.body;
+  const { name, location, uid, organization_id } = req.body;
   if (!name) return res.status(400).json({ error: 'Station name is required.' });
   try {
     const client = await getDb();
-    const orgId = await resolveAdminOrg(client, uid);
+    const resolvedOrgId = await resolveAdminOrg(client, uid);
+    const orgId = organization_id || resolvedOrgId;
     if (!orgId) return res.status(400).json({ error: 'No organization found for this user.' });
 
     const countRes = await client.query(`SELECT COUNT(*) AS count FROM stations WHERE organization_id=$1`, [orgId]);
