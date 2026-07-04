@@ -992,18 +992,17 @@ async function resolveAdminOrg(db, uid) {
 app.get('/api/admin/stations', async (req, res) => {
   try {
     const client = await getDb();
+    // Get filterOrgId first - allow null for super admin to see all
+    const filterOrgId = req.query.organization_id || null;
     const orgId = await resolveAdminOrg(client, req.query.uid);
-    if (!orgId) return res.json([]);
-
-    // Add filterOrgId to allow organization filtering
-    const filterOrgId = req.query.organization_id || orgId;
+    if (!orgId && !filterOrgId) return res.json([]);
 
     const result = await client.query(`
       SELECT s.id, s.name, s.location, s.organization_id,
        COUNT(t.id) AS tank_count
         FROM stations s
         LEFT JOIN tanks t ON t.station_id = s.id
-       WHERE s.organization_id = $1
+       WHERE ($1::uuid IS NULL OR s.organization_id = $1)
        GROUP BY s.id
        ORDER BY s.name`, [filterOrgId]);
     res.json(result.rows);
