@@ -125,7 +125,7 @@ export default function Tanks({ api, session }) {
         setSaving(true);
         setError('');
         try {
-            const url = editing ? `${api}/api/admin/tanks/${editing.id}` : `${api}/api/admin/tanks`;
+            const url = editing ? `${api}/api/tanks/${editing.id}` : `${api}/api/tanks`;
             const method = editing ? 'PUT' : 'POST';
             const res = await fetch(url, {
                 method,
@@ -175,7 +175,7 @@ export default function Tanks({ api, session }) {
     async function handleDelete(tank) {
         if (!window.confirm(`Delete Tank ${tank.tank_number} (${tank.fuel_type})? This cannot be undone.`)) return;
         try {
-            await fetch(`${api}/api/admin/tanks/${tank.id}`, { method: 'DELETE' });
+            await fetch(`${api}/api/tanks/${tank.id}`, { method: 'DELETE' });
             loadData();
         } catch (err) {
             alert('Failed to delete tank.');
