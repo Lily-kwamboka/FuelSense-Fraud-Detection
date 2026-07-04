@@ -1103,22 +1103,37 @@ app.put('/api/admin/tanks/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/tanks/:id', async (req, res) => {
+app.delete('/api/admin/stations/:id', async (req, res) => {
   try {
     const client = await getDb();
-    const orgId = await resolveAdminOrg(client, req.query.uid);
-    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
+    const id = req.params.id;
 
-    const result = await client.query(
-      `DELETE FROM tanks t
-        USING stations s
-       WHERE t.id = $1 AND t.station_id = s.id AND s.organization_id = $2
-      RETURNING t.id`,
-      [req.params.id, orgId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found in your organization.' });
+    // Step 1 — Null out FK references to atg_readings
+    await client.query(`UPDATE deliveries SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`UPDATE shifts SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+
+    // Step 2 — Delete tables referencing tanks
+    await client.query(`DELETE FROM alerts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM shifts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
+    await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
+
+    // Step 3 — Delete tables referencing stations
+    await client.query(`DELETE FROM alert_config WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM audit_log WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM payments WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM reconciliation_config WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM station_settings WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM subscriptions WHERE station_id=$1`, [id]);
+    await client.query(`UPDATE user_profiles SET station_id = NULL WHERE station_id=$1`, [id]);
+    await client.query(`DELETE FROM stations WHERE id=$1`, [id]);
+
     res.json({ ok: true });
   } catch (err) {
+    console.error('[API] Delete station error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
