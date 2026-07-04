@@ -187,6 +187,64 @@ app.get('/api/tanks/:id/readings', async (req, res) => {
   }
 });
 
+// ── POST /api/tanks ───────────────────────────────────────────────────────
+app.post('/api/tanks', async (req, res) => {
+  const { station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id } = req.body;
+  if (!station_id || !tank_number || !fuel_type || !capacity_litres)
+    return res.status(400).json({ error: 'station_id, tank_number, fuel_type and capacity_litres are required.' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO tanks (station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, deadwood_litres || 0, atg_probe_id || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] POST /api/tanks error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/tanks/:id ────────────────────────────────────────────────────
+app.put('/api/tanks/:id', async (req, res) => {
+  const { tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `UPDATE tanks SET tank_number=$1, fuel_type=$2, capacity_litres=$3, fuel_density_at_15c=$4, low_stock_threshold_pct=$5, deadwood_litres=$6, atg_probe_id=$7
+       WHERE id=$8 RETURNING *`,
+      [tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, deadwood_litres || 0, atg_probe_id || null, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found.' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] PUT /api/tanks error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/tanks/:id ─────────────────────────────────────────────────
+app.delete('/api/tanks/:id', async (req, res) => {
+  try {
+    const client = await getDb();
+    const id = req.params.id;
+    await client.query(`UPDATE deliveries SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id=$1`, [id]);
+    await client.query(`UPDATE shifts SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM alerts WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM daily_reconciliation WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM deliveries WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM shifts WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM atg_readings WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM strapping_table_entries WHERE tank_id=$1`, [id]);
+    await client.query(`DELETE FROM tanks WHERE id=$1`, [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /api/tanks error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/deliveries ───────────────────────────────────────────────────────
 app.get('/api/deliveries', async (req, res) => {
   try {
