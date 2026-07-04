@@ -938,8 +938,8 @@ app.get('/api/admin/stations', async (req, res) => {
     if (!orgId) return res.json([]);
 
     const result = await client.query(`
-      SELECT s.id, s.name, s.location,
-             COUNT(t.id) AS tank_count
+      SELECT s.id, s.name, s.location, s.organization_id,
+       COUNT(t.id) AS tank_count
         FROM stations s
         LEFT JOIN tanks t ON t.station_id = s.id
        WHERE s.organization_id = $1
@@ -986,117 +986,6 @@ app.put('/api/admin/stations/:id', async (req, res) => {
       [name, location || '', req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Station not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/admin/stations/:id', async (req, res) => {
-  try {
-    const client = await getDb();
-    const id = req.params.id;
-
-    // Null out references first
-    await client.query(`
-        UPDATE deliveries 
-        SET opening_reading_id = NULL, closing_reading_id = NULL
-        WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-
-    await client.query(`
-        UPDATE shifts 
-        SET opening_reading_id = NULL, closing_reading_id = NULL
-        WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-
-    // Delete in correct order
-    await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM shifts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM alerts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-    await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
-    await client.query(`DELETE FROM subscriptions WHERE station_id=$1`, [id]);
-    await client.query(`DELETE FROM stations WHERE id=$1`, [id]);
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[API] Delete station error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── TANKS (admin CRUD) ────────────────────────────────────────────────────────
-app.get('/api/admin/tanks', async (req, res) => {
-  try {
-    const client = await getDb();
-    const orgId = await resolveAdminOrg(client, req.query.uid);
-    const stationId = req.query.station_id;
-    if (!orgId) return res.json([]);
-
-    const params = [orgId];
-    let where = `s.organization_id = $1`;
-    if (stationId) {
-      params.push(stationId);
-      where += ` AND t.station_id = $${params.length}`;
-    }
-
-    const result = await client.query(`
-      SELECT t.id, t.tank_number, t.fuel_type, t.capacity_litres,
-             t.fuel_density_at_15c, t.low_stock_threshold_pct,
-             t.station_id, s.name AS station_name
-        FROM tanks t
-        JOIN stations s ON s.id = t.station_id
-       WHERE ${where}
-       ORDER BY s.name, t.tank_number`, params);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/admin/tanks', async (req, res) => {
-  const { station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct } = req.body;
-  if (!station_id || !tank_number || !fuel_type || !capacity_litres)
-    return res.status(400).json({ error: 'station_id, tank_number, fuel_type and capacity_litres are required.' });
-  try {
-    const client = await getDb();
-    const orgId = await resolveAdminOrg(client, req.query.uid);
-    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
-
-    const stationCheck = await client.query(
-      `SELECT id FROM stations WHERE id = $1 AND organization_id = $2`,
-      [station_id, orgId]
-    );
-    if (!stationCheck.rows.length)
-      return res.status(403).json({ error: 'Station does not belong to your organization.' });
-
-    const result = await client.query(
-      `INSERT INTO tanks (station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/admin/tanks/:id', async (req, res) => {
-  const { tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct } = req.body;
-  try {
-    const client = await getDb();
-    const orgId = await resolveAdminOrg(client, req.query.uid);
-    if (!orgId) return res.status(403).json({ error: 'No organization found for this user.' });
-
-    const result = await client.query(
-      `UPDATE tanks t SET tank_number=$1, fuel_type=$2, capacity_litres=$3, fuel_density_at_15c=$4, low_stock_threshold_pct=$5
-         FROM stations s
-        WHERE t.id=$6 AND t.station_id = s.id AND s.organization_id = $7
-      RETURNING t.*`,
-      [tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, req.params.id, orgId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found in your organization.' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
