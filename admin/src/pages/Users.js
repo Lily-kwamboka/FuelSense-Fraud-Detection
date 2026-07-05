@@ -22,8 +22,11 @@ export default function Users({ api, session }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
+    // ── Filter state ──────────────────────────────────────────────────────
+    const [filterOrg, setFilterOrg] = useState('');
+    const [filterStation, setFilterStation] = useState('');
+
     const adminEmail = session?.user?.email || '';
-    const adminUid = session?.user?.id || '';
 
     const [form, setForm] = useState({
         supabase_uid: '',
@@ -35,9 +38,21 @@ export default function Users({ api, session }) {
     });
 
     // Stations filtered by selected org in form
-    const filteredStations = form.organization_id
+    const filteredStationsForForm = form.organization_id
         ? stations.filter(s => s.organization_id === form.organization_id)
         : stations;
+
+    // Stations filtered by selected org in filter bar
+    const filteredStationsForFilter = filterOrg
+        ? stations.filter(s => s.organization_id === filterOrg)
+        : stations;
+
+    // Users filtered by org and station
+    const filteredUsers = users.filter(user => {
+        if (filterOrg && user.organization_id !== filterOrg) return false;
+        if (filterStation && user.station_id !== filterStation) return false;
+        return true;
+    });
 
     async function loadData() {
         setLoading(true);
@@ -62,6 +77,9 @@ export default function Users({ api, session }) {
 
     useEffect(() => { loadData(); }, []);
 
+    // When org filter changes, reset station filter
+    useEffect(() => { setFilterStation(''); }, [filterOrg]);
+
     function openAdd() {
         setEditing(null);
         setForm({ supabase_uid: '', email: '', full_name: '', role: 'station_manager', organization_id: '', station_id: '' });
@@ -77,7 +95,7 @@ export default function Users({ api, session }) {
             email: user.email || '',
             full_name: user.full_name || '',
             role: user.role || 'station_manager',
-            organization_id: station?.organization_id || '',
+            organization_id: station?.organization_id || user.organization_id || '',
             station_id: user.station_id || '',
         });
         setError('');
@@ -131,11 +149,44 @@ export default function Users({ api, session }) {
     return (
         <div>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '14px', color: '#666' }}>{users.length} user{users.length !== 1 ? 's' : ''} total</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                    {filteredUsers.length} of {users.length} user{users.length !== 1 ? 's' : ''}
+                </div>
                 <button onClick={openAdd} style={{ padding: '9px 18px', background: '#1a1a2e', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
                     + Add User
                 </button>
+            </div>
+
+            {/* ── FILTER BAR ── */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', padding: '14px 16px', background: '#f8f8f8', borderRadius: '10px', border: '1px solid #e0e0e0', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>Filter by:</span>
+                </div>
+                <select
+                    value={filterOrg}
+                    onChange={e => setFilterOrg(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', background: '#fff', outline: 'none', minWidth: '200px' }}
+                >
+                    <option value="">All Organisations</option>
+                    {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                <select
+                    value={filterStation}
+                    onChange={e => setFilterStation(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', background: '#fff', outline: 'none', minWidth: '200px' }}
+                >
+                    <option value="">All Stations</option>
+                    {filteredStationsForFilter.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                {(filterOrg || filterStation) && (
+                    <button
+                        onClick={() => { setFilterOrg(''); setFilterStation(''); }}
+                        style={{ padding: '7px 12px', background: '#fdecea', color: '#e74c3c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}
+                    >
+                        ✕ Clear filters
+                    </button>
+                )}
             </div>
 
             {/* Form */}
@@ -221,7 +272,7 @@ export default function Users({ api, session }) {
                                     <label style={labelStyle}>Station</label>
                                     <select value={form.station_id} onChange={e => setForm({ ...form, station_id: e.target.value })} style={inputStyle}>
                                         <option value="">All stations (admin)</option>
-                                        {filteredStations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {filteredStationsForForm.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -250,16 +301,21 @@ export default function Users({ api, session }) {
             {/* User list */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading users...</div>
-            ) : users.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '12px', padding: '60px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
-                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a2e', marginBottom: '8px' }}>No users yet</div>
-                    <div style={{ fontSize: '13px', color: '#888' }}>Add your first user to get started.</div>
+                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a2e', marginBottom: '8px' }}>
+                        {users.length === 0 ? 'No users yet' : 'No users match your filters'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#888' }}>
+                        {users.length === 0 ? 'Add your first user to get started.' : 'Try clearing the filters above.'}
+                    </div>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {users.map(user => {
+                    {filteredUsers.map(user => {
                         const rc = ROLE_COLORS[user.role] || ROLE_COLORS.attendant;
+                        const orgName = getOrgName(user.organization_id);
                         return (
                             <div key={user.id} style={{ background: '#fff', borderRadius: '12px', padding: '20px 24px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
@@ -271,12 +327,13 @@ export default function Users({ api, session }) {
                                             <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a2e' }}>{user.full_name || user.email}</div>
                                             <div style={{ fontSize: '12px', color: '#888' }}>{user.email}</div>
                                         </div>
-                                        <span style={{ ...rc, padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                                        <span style={{ background: rc.bg, color: rc.text, padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
                                             {user.role?.replace(/_/g, ' ').toUpperCase()}
                                         </span>
                                     </div>
                                     <div style={{ fontSize: '12px', color: '#888' }}>
-                                        {user.station_name || 'All stations'} &nbsp;·&nbsp;
+                                        {orgName && <span>🏢 {orgName} &nbsp;·&nbsp;</span>}
+                                        🏪 {user.station_name || 'All stations'} &nbsp;·&nbsp;
                                         UID: {user.supabase_uid?.substring(0, 8)}...
                                     </div>
                                 </div>
