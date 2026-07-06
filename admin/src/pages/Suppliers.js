@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function Suppliers({ api, session }) {
     const [suppliers, setSuppliers] = useState([]);
+    const [stations, setStations] = useState([]);
     const [orgs, setOrgs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -9,6 +10,7 @@ export default function Suppliers({ api, session }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [filterOrg, setFilterOrg] = useState('');
+    const [filterStation, setFilterStation] = useState('');
 
     const adminEmail = session?.user?.email || '';
 
@@ -22,16 +24,31 @@ export default function Suppliers({ api, session }) {
         tolerance_pct: '0.25',
     });
 
+    // Stations filtered by selected org in filter bar
+    const filteredStationsForFilter = filterOrg
+        ? stations.filter(s => s.organization_id === filterOrg)
+        : stations;
+
+    // Suppliers filtered by org and station
+    const filteredSuppliers = suppliers.filter(supplier => {
+        if (filterOrg && supplier.organization_id !== filterOrg) return false;
+        if (filterStation && supplier.station_id !== filterStation) return false;
+        return true;
+    });
+
     async function loadData() {
         setLoading(true);
         try {
-            const [suppliersRes, orgsRes] = await Promise.all([
-                fetch(`${api}/api/admin/suppliers${filterOrg ? '?organization_id=' + filterOrg : ''}`),
+            const [suppliersRes, stationsRes, orgsRes] = await Promise.all([
+                fetch(`${api}/api/admin/suppliers`),
+                fetch(`${api}/api/admin/stations`),
                 fetch(`${api}/api/admin/organizations?admin_email=${encodeURIComponent(adminEmail)}`),
             ]);
             const suppliersData = await suppliersRes.json();
+            const stationsData = await stationsRes.json();
             const orgsData = await orgsRes.json();
             setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+            setStations(Array.isArray(stationsData) ? stationsData : []);
             setOrgs(Array.isArray(orgsData) ? orgsData : []);
         } catch (err) {
             console.error('Failed to load data:', err);
@@ -40,7 +57,10 @@ export default function Suppliers({ api, session }) {
         }
     }
 
-    useEffect(() => { loadData(); }, [filterOrg]);
+    useEffect(() => { loadData(); }, []);
+
+    // Reset station filter when org changes
+    useEffect(() => { setFilterStation(''); }, [filterOrg]);
 
     function openAdd() {
         setEditing(null);
@@ -119,21 +139,42 @@ export default function Suppliers({ api, session }) {
     return (
         <div>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '14px', color: '#666' }}>{suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''} total</div>
-                    <select
-                        value={filterOrg}
-                        onChange={e => setFilterOrg(e.target.value)}
-                        style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', background: '#f8f8f8', outline: 'none', cursor: 'pointer' }}
-                    >
-                        <option value="">All organisations</option>
-                        {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                    {filteredSuppliers.length} of {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''}
                 </div>
                 <button onClick={openAdd} style={{ padding: '9px 18px', background: '#1a1a2e', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
                     + Add Supplier
                 </button>
+            </div>
+
+            {/* ── FILTER BAR ── */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', padding: '14px 16px', background: '#f8f8f8', borderRadius: '10px', border: '1px solid #e0e0e0', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>Filter by:</span>
+                <select
+                    value={filterOrg}
+                    onChange={e => setFilterOrg(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', background: '#fff', outline: 'none', minWidth: '200px' }}
+                >
+                    <option value="">All Organisations</option>
+                    {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                <select
+                    value={filterStation}
+                    onChange={e => setFilterStation(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #e0e0e0', fontSize: '13px', background: '#fff', outline: 'none', minWidth: '200px' }}
+                >
+                    <option value="">All Stations</option>
+                    {filteredStationsForFilter.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                {(filterOrg || filterStation) && (
+                    <button
+                        onClick={() => { setFilterOrg(''); setFilterStation(''); }}
+                        style={{ padding: '7px 12px', background: '#fdecea', color: '#e74c3c', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}
+                    >
+                        ✕ Clear filters
+                    </button>
+                )}
             </div>
 
             {/* Form */}
@@ -228,20 +269,22 @@ export default function Suppliers({ api, session }) {
             {/* Supplier list */}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading suppliers...</div>
-            ) : suppliers.length === 0 ? (
+            ) : filteredSuppliers.length === 0 ? (
                 <div style={{ background: '#fff', borderRadius: '12px', padding: '60px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚚</div>
-                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a2e', marginBottom: '8px' }}>No suppliers yet</div>
+                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a2e', marginBottom: '8px' }}>
+                        {suppliers.length === 0 ? 'No suppliers yet' : 'No suppliers match your filters'}
+                    </div>
                     <div style={{ fontSize: '13px', color: '#888' }}>
-                        {filterOrg ? 'No suppliers for this organisation.' : 'Add your first supplier to get started.'}
+                        {suppliers.length === 0 ? 'Add your first supplier to get started.' : 'Try clearing the filters above.'}
                     </div>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {suppliers.map(supplier => (
+                    {filteredSuppliers.map(supplier => (
                         <div key={supplier.id} style={{ background: '#fff', borderRadius: '12px', padding: '20px 24px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: supplier.is_active ? 1 : 0.6 }}>
                             <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e' }}>🚚 {supplier.name}</span>
                                     <span style={{ background: supplier.is_active ? '#eafaf1' : '#f0f0f0', color: supplier.is_active ? '#1e8449' : '#888', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
                                         {supplier.is_active ? 'ACTIVE' : 'INACTIVE'}
@@ -252,6 +295,11 @@ export default function Suppliers({ api, session }) {
                                     {supplier.organization_name && (
                                         <span style={{ background: '#f3e8ff', color: '#7c3aed', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
                                             🏢 {supplier.organization_name}
+                                        </span>
+                                    )}
+                                    {supplier.station_name && (
+                                        <span style={{ background: '#eafaf1', color: '#1e8449', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                                            🏪 {supplier.station_name}
                                         </span>
                                     )}
                                 </div>
