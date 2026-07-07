@@ -1425,4 +1425,14 @@ app.post('/api/admin/reconciliation-config', async (req, res) => {
   }
 });
 
+// ── Start scheduler ───────────────────────────────────────────────────────
+setTimeout(() => {
+  try {
+    require('./scheduler');
+    console.log('[API] Scheduler started ✓');
+  } catch (err) {
+    console.error('[API] Failed to start scheduler:', err.message);
+  }
+}, 3000);
+
 module.exports = app;
