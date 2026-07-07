@@ -270,9 +270,27 @@ async function getStatusReport() {
 }
 
 // ---------------------------------------------------------------------------
+// Additional helper - fetchInventory with timestamp
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch inventory and add a parsedAt timestamp
+ */
+async function fetchInventory() {
+    const readings = await getInventory();
+    return { readings, parsedAt: new Date() };
+}
+
+// ---------------------------------------------------------------------------
 // Export for use as a module
 // ---------------------------------------------------------------------------
-module.exports = { getInventory, getDeliveryReport, getStatusReport, ATG_CONFIG };
+module.exports = {
+    getInventory,
+    getDeliveryReport,
+    getStatusReport,
+    fetchInventory,
+    ATG_CONFIG
+};
 
 // ---------------------------------------------------------------------------
 // Standalone test - runs when called directly: node atg-client.js
