@@ -1425,6 +1425,16 @@ app.post('/api/admin/reconciliation-config', async (req, res) => {
   }
 });
 
+// ── Start ATG simulator (runs on port 10001 for dev/demo) ─────────────────
+if (process.env.USE_ATG_SIMULATOR === 'true') {
+  try {
+    require('./atg-simulator');
+    console.log('[API] ATG simulator started on port 10001 ✓');
+  } catch (err) {
+    console.error('[API] Failed to start ATG simulator:', err.message);
+  }
+}
+
 // ── Start scheduler ───────────────────────────────────────────────────────
 setTimeout(() => {
   try {
