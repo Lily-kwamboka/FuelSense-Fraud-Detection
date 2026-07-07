@@ -131,10 +131,18 @@ async function getInventory() {
   return readings;
 }
 
-// Alias for fetchInventory (returns full result object)
+// Alias for fetchInventory (returns full result object with parsedAt)
 async function fetchInventory() {
   const readings = await getInventory();
-  return { readings };
+  // Convert camelCase to snake_case for scheduler compatibility and add parsedAt
+  const converted = readings.map(r => ({
+    tankNumber: r.tankNumber,
+    product: r.product,
+    innage_mm: r.innageMm,
+    water_mm: r.waterMm,
+    temperature_c: r.tempC,
+  }));
+  return { readings: converted, parsedAt: new Date() };
 }
 
 function ping() {
