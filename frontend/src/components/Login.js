@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 
-function Login() {
+function Login({ onBack }) {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -57,6 +57,11 @@ function Login() {
           <button style={styles.linkBtn} onClick={() => { setResetSent(false); setResetMode(false); }}>
             Back to Sign In
           </button>
+          {onBack && (
+            <button style={{ ...styles.linkBtn, marginTop: '12px' }} onClick={onBack}>
+              Back to public site
+            </button>
+          )}
         </div>
       </div>
     );
@@ -90,6 +95,11 @@ function Login() {
           <button style={styles.linkBtn} onClick={() => { setResetMode(false); setError(null); }}>
             Back to Sign In
           </button>
+          {onBack && (
+            <button style={{ ...styles.linkBtn, marginTop: '12px' }} onClick={onBack}>
+              Back to public site
+            </button>
+          )}
         </div>
       </div>
     );
@@ -177,6 +187,12 @@ function Login() {
         <div style={styles.footer}>
           FuelSense · Mafuta Salama · Nairobi, Kenya
         </div>
+
+        {onBack && (
+          <button style={{ ...styles.linkBtn, marginTop: '14px' }} onClick={onBack}>
+            Back to public site
+          </button>
+        )}
 
       </div>
     </div>
