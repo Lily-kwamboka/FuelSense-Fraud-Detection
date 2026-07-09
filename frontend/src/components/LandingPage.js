@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './LandingPage.css';
 
 const DEMO_HREF = 'mailto:hello@mafutasalama.co.ke?subject=Book%20a%20FuelSense%20Demo';
@@ -86,6 +86,22 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // Scroll-reveal: add .is-visible when element enters viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <main className="landing-page">
       <nav className="landing-nav" aria-label="Public navigation">
@@ -103,6 +119,9 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       </nav>
 
       <section className="landing-hero" id="top">
+        {/* Atmospheric glow orbs */}
+        <div className="landing-hero-orb" aria-hidden="true" />
+        <div className="landing-hero-orb landing-hero-orb--secondary" aria-hidden="true" />
         <DashboardScene />
         <div className="landing-hero-shade" />
         <div className="landing-hero-copy">
@@ -114,16 +133,22 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
             alerts, and audit trails for serious fuel station operators.
           </p>
           <div className="landing-actions">
-            <a className="landing-primary" href={demoHref}>Book Demo</a>
+            <a className="landing-primary landing-primary--shimmer" href={demoHref}>Book Demo</a>
             <button className="landing-secondary" type="button" onClick={onLoginClick}>
               Customer Login
             </button>
           </div>
         </div>
+        {/* Scroll indicator */}
+        <div className="landing-hero-scroll" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M5 8l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       </section>
 
       <section className="landing-section landing-pain-section" id="pain">
-        <div className="landing-section-heading">
+        <div className="landing-section-heading reveal">
           <span>Why teams need it</span>
           <h2>Fuel loss rarely announces itself.</h2>
           <p>
@@ -132,9 +157,13 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           </p>
         </div>
         <div className="landing-pain-grid">
-          {pains.map((pain) => (
-            <div className="landing-pain-card" key={pain}>
-              <span aria-hidden="true" />
+          {pains.map((pain, i) => (
+            <div
+              className="landing-pain-card reveal"
+              key={pain}
+              style={{ transitionDelay: `${i * 0.08}s` }}
+            >
+              <span className="landing-pain-icon" aria-hidden="true">⚠</span>
               <p>{pain}</p>
             </div>
           ))}
@@ -142,13 +171,17 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       </section>
 
       <section className="landing-section landing-how-section" id="how">
-        <div className="landing-section-heading">
+        <div className="landing-section-heading reveal">
           <span>How it works</span>
           <h2>From readings to action in four steps.</h2>
         </div>
         <div className="landing-step-grid">
           {steps.map((step, index) => (
-            <article className="landing-step" key={step.title}>
+            <article
+              className="landing-step reveal"
+              key={step.title}
+              style={{ transitionDelay: `${index * 0.1}s` }}
+            >
               <div className="landing-step-number">{String(index + 1).padStart(2, '0')}</div>
               <h3>{step.title}</h3>
               <p>{step.body}</p>
@@ -158,20 +191,26 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       </section>
 
       <section className="landing-section landing-features-section">
-        <div className="landing-section-heading">
+        <div className="landing-section-heading reveal">
           <span>Product surface</span>
           <h2>The operating layer for every litre.</h2>
         </div>
         <div className="landing-feature-layout">
-          <div className="landing-feature-copy">
+          <div className="landing-feature-copy reveal">
             <p>
               The public product story matches the private dashboard: tank
               levels, delivery records, reconciliation, alerts, reports, and
               audit history in one controlled workspace.
             </p>
             <div className="landing-feature-list">
-              {features.map((feature) => (
-                <div key={feature}>{feature}</div>
+              {features.map((feature, i) => (
+                <div
+                  key={feature}
+                  className="reveal"
+                  style={{ transitionDelay: `${i * 0.07}s` }}
+                >
+                  {feature}
+                </div>
               ))}
             </div>
           </div>
@@ -180,7 +219,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       </section>
 
       <section className="landing-section landing-pricing-section" id="pricing">
-        <div className="landing-section-heading">
+        <div className="landing-section-heading reveal">
           <span>Pricing</span>
           <h2>Public pricing, private onboarding.</h2>
           <p>
@@ -189,8 +228,12 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           </p>
         </div>
         <div className="landing-pricing-grid">
-          {plans.map((plan) => (
-            <article className={`landing-plan ${plan.featured ? 'landing-plan-featured' : ''}`} key={plan.name}>
+          {plans.map((plan, i) => (
+            <article
+              className={`landing-plan ${plan.featured ? 'landing-plan-featured' : ''} reveal`}
+              key={plan.name}
+              style={{ transitionDelay: `${i * 0.12}s` }}
+            >
               {plan.featured && <div className="landing-plan-badge">Most popular</div>}
               <h3>{plan.name}</h3>
               <p className="landing-plan-limits">{plan.detail}</p>
@@ -210,7 +253,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       </section>
 
       <section className="landing-section landing-team-section" id="team">
-        <div className="landing-section-heading">
+        <div className="landing-section-heading reveal">
           <span>People behind the project</span>
           <h2>Built close to the fuel station floor.</h2>
           <p>
@@ -219,9 +262,15 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           </p>
         </div>
         <div className="landing-team-grid">
-          {team.map((member) => (
-            <article className="landing-team-card" key={member.name}>
-              <img className="landing-avatar-photo" src={member.image} alt={member.name} />
+          {team.map((member, i) => (
+            <article
+              className="landing-team-card reveal"
+              key={member.name}
+              style={{ transitionDelay: `${i * 0.15}s` }}
+            >
+              <div className="landing-avatar-ring">
+                <img className="landing-avatar-photo" src={member.image} alt={member.name} />
+              </div>
               <h3>{member.name}</h3>
               <p>{member.role}</p>
             </article>
@@ -235,7 +284,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           <h2>Bring FuelSense into the conversation before the next variance.</h2>
         </div>
         <div className="landing-actions">
-          <a className="landing-primary" href={demoHref}>Book Demo</a>
+          <a className="landing-primary landing-primary--shimmer" href={demoHref}>Book Demo</a>
           <button className="landing-secondary landing-secondary-light" type="button" onClick={onLoginClick}>
             Login
           </button>
@@ -268,13 +317,13 @@ function DashboardScene() {
           </div>
         </div>
         <div className="landing-chart">
-          <span style={{ height: '52%' }} />
-          <span style={{ height: '78%' }} />
-          <span style={{ height: '44%' }} />
-          <span style={{ height: '67%' }} />
-          <span style={{ height: '35%' }} />
-          <span style={{ height: '88%' }} />
-          <span style={{ height: '59%' }} />
+          <span style={{ height: '52%', animationDelay: '0.1s' }} />
+          <span style={{ height: '78%', animationDelay: '0.2s' }} />
+          <span style={{ height: '44%', animationDelay: '0.3s' }} />
+          <span style={{ height: '67%', animationDelay: '0.4s' }} />
+          <span style={{ height: '35%', animationDelay: '0.5s' }} />
+          <span style={{ height: '88%', animationDelay: '0.6s' }} />
+          <span style={{ height: '59%', animationDelay: '0.7s' }} />
         </div>
       </div>
       <div className="landing-scene-panel landing-scene-side">
@@ -292,7 +341,7 @@ function DashboardScene() {
 
 function MiniConsole() {
   return (
-    <div className="landing-console" aria-label="FuelSense dashboard preview">
+    <div className="landing-console reveal" aria-label="FuelSense dashboard preview">
       <div className="landing-console-header">
         <span>FuelSense Monitor</span>
         <strong>Live</strong>
