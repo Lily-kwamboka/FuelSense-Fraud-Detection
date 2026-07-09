@@ -1,17 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   CSS @property — enables smooth conic-gradient border rotation
-   ───────────────────────────────────────────────────────────────────────────── */
+/* CSS @property - conic-gradient border rotation */
 @property --border-angle {
   syntax: '<angle>';
   initial-value: 0deg;
   inherits: false;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   DESIGN TOKENS
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Design Tokens */
 .landing-page {
   --bg-deep:    #0e1628;
   --bg-dark:    #131e36;
@@ -36,9 +32,7 @@
   box-sizing: border-box;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   KEYFRAMES
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Animation Keyframes */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(32px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -122,9 +116,7 @@
   50%       { transform: translateY(-50%) scale(1.18); opacity: 0.5; }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   SCROLL REVEAL
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Scroll Reveal */
 .reveal {
   opacity: 0;
   transform: translateY(28px);
@@ -136,13 +128,12 @@
   transform: translateY(0);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   JERRYCAN SCROLL TRACKER  (fixed top-right, upright can, drip grows down)
-   ─────────────────────────────────────────────────────────────────────────────
+/* 
+   Jerrycan Scroll Tracker (fixed top-right, upright can, drip grows down)
    The jerrycan sits upright. A dark-amber drip fill grows downward from
    the bottom of the can proportionally to scroll progress. A small oil pool
    fades in near the bottom when you're close to the end of the page.
-   ───────────────────────────────────────────────────────────────────────────── */
+*/
 .fs-tracker {
   height: calc(100vh - 120px);  /* dynamic sidebar height */
   pointer-events: none;
@@ -255,21 +246,18 @@
   width: 84px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   NAVIGATION
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Navigation Bar */
 .landing-nav {
-  align-items: center;
-  background: rgba(7, 9, 15, 0.92);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.1);
-  box-shadow: 0 1px 0 rgba(245, 158, 11, 0.06);
+  background: rgba(14, 22, 40, 0.75);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   display: flex;
   gap: 20px;
   justify-content: space-between;
   left: 0;
-  padding: 12px clamp(18px, 4vw, 56px);
+  padding: 14px clamp(18px, 4vw, 56px);
   position: fixed;
   right: 0;
   top: 0;
@@ -337,7 +325,7 @@
 
 .landing-nav-links a::after,
 .landing-nav-links button:not(.landing-login)::after {
-  background: var(--amber);
+  background: var(--green);
   bottom: 2px;
   content: '';
   height: 1.5px;
@@ -357,36 +345,10 @@
   width: 100%;
 }
 
-/* LIVE badge */
-.landing-nav-live {
-  align-items: center;
-  background: rgba(34, 197, 94, 0.09);
-  border: 1px solid rgba(34, 197, 94, 0.24);
-  border-radius: 100px;
-  color: var(--green);
-  display: flex;
-  font-size: 10.5px;
-  font-weight: 700;
-  gap: 6px;
-  letter-spacing: 0.1em;
-  padding: 5px 12px;
-  text-transform: uppercase;
-}
-
-.landing-nav-live-dot {
-  animation: livePulse 1.6s ease-in-out infinite;
-  background: var(--green);
-  border-radius: 50%;
-  display: block;
-  flex-shrink: 0;
-  height: 6px;
-  width: 6px;
-}
-
 /* Login button */
 .landing-nav-links .landing-login {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   color: var(--ink);
   font-size: 13px;
@@ -396,14 +358,69 @@
 }
 
 .landing-nav-links .landing-login:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HERO
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Mobile Hamburger Navigation Button */
+.landing-nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  position: relative;
+  z-index: 250;
+  width: 40px;
+  height: 40px;
+}
+
+.hamburger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--ink);
+  position: relative;
+  transition: background 0.25s ease;
+  margin: 0 auto;
+}
+
+.hamburger-bar::before,
+.hamburger-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--ink);
+  transition: transform 0.25s ease, top 0.25s ease, bottom 0.25s ease;
+}
+
+.hamburger-bar::before {
+  top: -7px;
+}
+
+.hamburger-bar::after {
+  bottom: -7px;
+}
+
+/* Toggle Menu Active State transforms */
+.hamburger-bar.open {
+  background: transparent;
+}
+
+.hamburger-bar.open::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.hamburger-bar.open::after {
+  bottom: 0;
+  transform: rotate(-45deg);
+}
+
+/* Hero Section */
 .landing-hero {
   align-items: center;
   background: var(--bg-deep);
@@ -813,9 +830,7 @@
   margin: 0 auto;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   SHARED SECTION LAYOUT
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Shared Section Layout */
 .landing-section {
   padding: clamp(72px, 9vw, 118px) clamp(18px, 6vw, 88px);
 }
@@ -842,9 +857,7 @@
   max-width: 580px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   PAIN SECTION  — "Alert console"
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Pain Points Section */
 .landing-pain-section {
   background: var(--bg-deep);
 }
@@ -949,9 +962,7 @@
   text-transform: uppercase;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HOW IT WORKS  — Pipeline
-   ───────────────────────────────────────────────────────────────────────────── */
+/* How It Works Pipeline */
 .landing-how-section {
   background: var(--bg-dark);
 }
@@ -1049,9 +1060,7 @@
   width: 9px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   FEATURES SECTION  — Terminal console
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Features Section */
 .landing-features-section {
   background: var(--bg-panel);
 }
@@ -1239,9 +1248,7 @@
 .tag--warn { background: rgba(239, 68, 68, 0.12); color: var(--red); }
 .tag--err  { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   PRICING SECTION
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Pricing Section */
 .landing-pricing-section {
   background: var(--bg-deep);
 }
@@ -1398,9 +1405,7 @@
   box-shadow: 0 8px 28px rgba(220, 38, 38, 0.6);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   TEAM SECTION
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Team Section */
 .landing-team-section {
   background: var(--bg-dark);
 }
@@ -1466,9 +1471,7 @@
   width: 118px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   FINAL CTA
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Final CTA */
 .landing-final-cta {
   background: var(--bg-deep);
   overflow: hidden;
@@ -1518,21 +1521,8 @@
   justify-content: center;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   RESPONSIVE — tablet
-   ───────────────────────────────────────────────────────────────────────────── */
+/* Tablet Responsive Styles */
 @media (max-width: 980px) {
-  .landing-nav {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .landing-nav-links {
-    flex-wrap: wrap;
-    gap: 10px 14px;
-  }
-
   .landing-hero {
     flex-direction: column;
     min-height: auto;
@@ -1548,6 +1538,8 @@
 
   .landing-hero-copy .landing-hero-sub {
     max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .landing-actions {
@@ -1556,7 +1548,7 @@
 
   .landing-hero-visual {
     flex: none;
-    max-width: 380px;
+    max-width: 100%;
     width: 100%;
   }
 
@@ -1608,27 +1600,91 @@
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   RESPONSIVE — mobile
-   ───────────────────────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
+/* Mobile responsive styles */
+@media (max-width: 768px) {
   .landing-nav {
-    position: absolute;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 20px;
   }
 
+  .landing-nav-toggle {
+    display: block; /* Show hamburger button */
+  }
+
+  /* Full screen slide-down glassmorphic menu */
   .landing-nav-links {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(14, 22, 40, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 40px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 200;
+  }
+
+  .landing-nav-links.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .landing-nav-links button,
+  .landing-nav-links a {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    padding: 8px 0;
+  }
+
+  .landing-login {
+    width: 100%;
+    max-width: 220px;
+    text-align: center;
+  }
+
+  /* Wrap tank telemetry cards vertically */
+  .landing-tank-monitor {
+    height: auto;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 30px;
+  }
+
+  .landing-tank-telemetry {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
     width: 100%;
   }
 
-  .landing-nav-links a,
-  .landing-nav-links button {
-    font-size: 12px;
+  .telemetry-pill {
+    flex: 1 1 140px;
+    max-width: 180px;
+    min-width: 130px;
   }
+}
 
-  .landing-nav-links .landing-login {
-    margin-left: auto;
-  }
-
+/* Small Viewport Refinements */
+@media (max-width: 640px) {
   .landing-hero {
     padding-left: 18px;
     padding-right: 18px;

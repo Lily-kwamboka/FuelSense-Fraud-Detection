@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './LandingPage.css';
 
-const DEMO_HREF = 'mailto:hello@mafutasalama.co.ke?subject=Book%20a%20FuelSense%20Demo';
+const DEMO_HREF = 'mailto:kwambokalilian59@gmail.com?subject=Book%20a%20FuelSense%20Demo';
 
 const pains = [
   { text: 'Delivery variance appears after the truck has already left.', severity: 78 },
@@ -88,8 +88,10 @@ const team = [
   },
 ];
 
-/* ═══════════════════════════════════════════════════════════════ MAIN PAGE ══ */
+// Main landing page component
 function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const goTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -126,34 +128,41 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       {/* Fixed jerrycan + oil-spill scroll progress indicator */}
       <JerrycanScrollTracker />
 
-      {/* ── NAV ─────────────────────────────────────────────────────────── */}
+      {/* Navigation bar */}
       <nav className="landing-nav" aria-label="Public navigation">
-        <button className="landing-brand" type="button" onClick={() => goTo('top')}>
+        <button className="landing-brand" type="button" onClick={() => { goTo('top'); setMenuOpen(false); }}>
           <HexBrandMark />
           <span>FuelSense</span>
         </button>
-        <div className="landing-nav-links">
-          <button type="button" onClick={() => goTo('how')}>
+
+        {/* Mobile Hamburger Toggle Button */}
+        <button 
+          className="landing-nav-toggle" 
+          type="button" 
+          aria-label="Toggle navigation menu"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          <span className={`hamburger-bar ${menuOpen ? 'open' : ''}`} />
+        </button>
+
+        <div className={`landing-nav-links ${menuOpen ? 'open' : ''}`}>
+          <button type="button" onClick={() => { goTo('how'); setMenuOpen(false); }}>
             How It Works
           </button>
-          <button type="button" onClick={() => goTo('pricing')}>
+          <button type="button" onClick={() => { goTo('pricing'); setMenuOpen(false); }}>
             Pricing
           </button>
-          <button type="button" onClick={() => goTo('team')}>
+          <button type="button" onClick={() => { goTo('team'); setMenuOpen(false); }}>
             Team
           </button>
-          <a href={demoHref}>Book Demo</a>
-          <div className="landing-nav-live" aria-label="System live">
-            <span className="landing-nav-live-dot" aria-hidden="true" />
-            Live
-          </div>
-          <button className="landing-login" type="button" onClick={onLoginClick}>
+          <a href={demoHref} onClick={() => setMenuOpen(false)}>Book Demo</a>
+          <button className="landing-login" type="button" onClick={() => { onLoginClick(); setMenuOpen(false); }}>
             Login
           </button>
         </div>
       </nav>
 
-      {/* ── HERO ────────────────────────────────────────────────────────── */}
+      {/* Hero section */}
       <section className="landing-hero" id="top">
         <div className="landing-hero-bg" aria-hidden="true">
           <div className="landing-hero-orb landing-hero-orb--red" />
@@ -196,7 +205,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── PAIN ────────────────────────────────────────────────────────── */}
+      {/* Pain points section */}
       <section className="landing-section landing-pain-section" id="pain">
         <div className="landing-section-heading reveal">
           <span>System alerts detected</span>
@@ -230,7 +239,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
+      {/* How it works pipeline */}
       <section className="landing-section landing-how-section" id="how">
         <div className="landing-section-heading reveal">
           <span>Pipeline</span>
@@ -278,7 +287,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── FEATURES ────────────────────────────────────────────────────── */}
+      {/* Features section */}
       <section className="landing-section landing-features-section">
         <div className="landing-section-heading reveal">
           <span>Product surface</span>
@@ -307,7 +316,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── PRICING ─────────────────────────────────────────────────────── */}
+      {/* Pricing section */}
       <section className="landing-section landing-pricing-section" id="pricing">
         <div className="landing-section-heading reveal">
           <span>Pricing</span>
@@ -344,7 +353,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── TEAM ────────────────────────────────────────────────────────── */}
+      {/* Team section */}
       <section className="landing-section landing-team-section" id="team">
         <div className="landing-section-heading reveal">
           <span>People behind the project</span>
@@ -375,7 +384,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
       </section>
 
-      {/* ── FINAL CTA ───────────────────────────────────────────────────── */}
+      {/* Final call to action */}
       <section className="landing-final-cta">
         <div className="landing-final-cta-bg" aria-hidden="true" />
         <div className="landing-final-cta-inner">
@@ -399,9 +408,9 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════ SUB-COMPONENTS ══ */
+// Sub-components
 
-/* ── Hexagon brand mark ─────────────────────────────────────────────────── */
+/* Hexagon brand mark logo */
 function HexBrandMark() {
   return (
     <span className="landing-brand-mark" aria-hidden="true">
@@ -429,7 +438,7 @@ function HexBrandMark() {
   );
 }
 
-/* ── Fixed jerrycan scroll tracker ─────────────────────────────────────── */
+/* Fixed scroll indicator */
 function JerrycanScrollTracker() {
   return (
     <div className="fs-tracker" aria-hidden="true">
@@ -448,7 +457,7 @@ function JerrycanScrollTracker() {
   );
 }
 
-/* ── Jerrycan SVG ───────────────────────────────────────────────────────── */
+/* Jerrycan vector graphic */
 function JerrycanSVG() {
   return (
     <svg viewBox="0 0 60 84" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -507,7 +516,7 @@ function JerrycanSVG() {
   );
 }
 
-/* ── Oil spill blob SVG ─────────────────────────────────────────────────── */
+/* Oil spill organic blob graphic */
 function OilSpillSVG() {
   return (
     <svg viewBox="-8 -5 185 110" xmlns="http://www.w3.org/2000/svg" className="fs-oil-blob">
@@ -547,7 +556,7 @@ function OilSpillSVG() {
   );
 }
 
-/* ── Fuel gauge (hero visual) ───────────────────────────────────────────── */
+/* Analog fuel risk indicator dial */
 function FuelGauge() {
   return (
     <div className="landing-gauge-wrap">
@@ -657,7 +666,7 @@ function FuelGauge() {
   );
 }
 
-/* ── Floating hero metrics ───────────────────────────────────────────────── */
+/* Floating dashboard status cards */
 function FloatingMetrics() {
   return (
     <div className="landing-floating-metrics">
@@ -677,7 +686,7 @@ function FloatingMetrics() {
   );
 }
 
-/* ── Glassmorphic Hero Tank Monitor ──────────────────────────────────────── */
+/* Glassmorphic tank monitor visual */
 function HeroTankMonitor() {
   return (
     <div className="landing-tank-monitor">
@@ -749,7 +758,7 @@ function HeroTankMonitor() {
   );
 }
 
-/* ── Operations monitor dashboard log ─────────────────────────────────────── */
+/* Live station operating logs list */
 function OperationsMonitor() {
   return (
     <div className="landing-console reveal" aria-label="FuelSense live operations log">
