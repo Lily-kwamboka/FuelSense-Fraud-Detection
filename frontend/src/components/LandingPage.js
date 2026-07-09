@@ -180,8 +180,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         </div>
 
         <div className="landing-hero-visual" aria-hidden="true">
-          <FuelGauge />
-          <FloatingMetrics />
+          <HeroTankMonitor />
         </div>
 
         <div className="landing-hero-scroll" aria-hidden="true">
@@ -673,6 +672,78 @@ function FloatingMetrics() {
       <div className="landing-metric-card landing-metric-card--danger" style={{ animationDelay: '0.8s' }}>
         <span>Variance Risk</span>
         <strong>HIGH</strong>
+      </div>
+    </div>
+  );
+}
+
+/* ── Glassmorphic Hero Tank Monitor ──────────────────────────────────────── */
+function HeroTankMonitor() {
+  return (
+    <div className="landing-tank-monitor">
+      {/* Background glass tank container */}
+      <div className="landing-tank-frame">
+        {/* Scale Ticks on the left side */}
+        <div className="landing-tank-ticks">
+          <span>20K L</span>
+          <span>15K L</span>
+          <span>10K L</span>
+          <span>5K L</span>
+          <span>0 L</span>
+        </div>
+
+        {/* Sloshing Liquid area */}
+        <div className="landing-tank-liquid-container">
+          <svg className="landing-tank-waves" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Wave 1 - Dark petroleum background sloshing path */}
+            <path
+              d="M0,48 Q25,43 50,48 T100,48 L100,100 L0,100 Z"
+              fill="rgba(69, 26, 3, 0.45)"
+              className="wave-path wave-path--back"
+            />
+            {/* Wave 2 - Iridescent golden/amber foreground sloshing path */}
+            <path
+              d="M0,50 Q25,56 50,50 T100,50 L100,100 L0,100 Z"
+              fill="url(#oilGrad)"
+              className="wave-path wave-path--front"
+            />
+            <defs>
+              <linearGradient id="oilGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="rgba(245, 158, 11, 0.75)" />
+                <stop offset="40%" stopColor="rgba(180, 83, 9, 0.85)" />
+                <stop offset="100%" stopColor="rgba(69, 26, 3, 0.95)" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        {/* Front-mounted Dial overlay */}
+        <div className="landing-tank-gauge-overlay">
+          <FuelGauge />
+        </div>
+      </div>
+
+      {/* Floating Telemetry overlays around it */}
+      <div className="landing-tank-telemetry landing-tank-telemetry--top">
+        <div className="telemetry-pill">
+          <span className="label">ACTIVE INNAGE</span>
+          <strong className="value value--green">82.4%</strong>
+        </div>
+        <div className="telemetry-pill">
+          <span className="label">NET VOL (NSV)</span>
+          <strong className="value">14,820 L</strong>
+        </div>
+      </div>
+
+      <div className="landing-tank-telemetry landing-tank-telemetry--bottom">
+        <div className="telemetry-pill">
+          <span className="label">SHELL TEMP</span>
+          <strong className="value">27.6 °C</strong>
+        </div>
+        <div className="telemetry-pill">
+          <span className="label">WATER INGRESS</span>
+          <strong className="value value--danger">12.0 mm</strong>
+        </div>
       </div>
     </div>
   );

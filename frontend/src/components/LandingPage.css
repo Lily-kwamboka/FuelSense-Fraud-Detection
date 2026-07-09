@@ -470,9 +470,10 @@
 .landing-hero-visual {
   align-items: center;
   display: flex;
-  flex: 0 0 400px;
-  flex-direction: column;
-  gap: 24px;
+  flex: 1 1 480px;
+  justify-content: center;
+  max-width: 580px;
+  min-width: 380px;
   position: relative;
   z-index: 2;
 }
@@ -607,7 +608,199 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ─ Fuel gauge ─ */
+/* ── Glassmorphic Fuel Tank Monitor Visual ── */
+.landing-tank-monitor {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Vertical tank container */
+.landing-tank-frame {
+  background: rgba(30, 43, 74, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.5), 
+    inset 0 0 30px rgba(255, 255, 255, 0.02);
+  width: 250px;
+  height: 380px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Measurement scale ticks */
+.landing-tank-ticks {
+  position: absolute;
+  left: 14px;
+  top: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.landing-tank-ticks span {
+  color: rgba(255, 255, 255, 0.2);
+  font-family: monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  position: relative;
+  padding-left: 10px;
+}
+
+/* Line indicator for each tick */
+.landing-tank-ticks span::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Liquid container representing 82% tank capacity (height starts 18% down) */
+.landing-tank-liquid-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: 18%;
+  overflow: hidden;
+  border-bottom-left-radius: 26px;
+  border-bottom-right-radius: 26px;
+}
+
+/* Sloshing Wave paths overlayed */
+.landing-tank-waves {
+  width: 240%;
+  height: 110%;
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+}
+
+.wave-path {
+  transform-origin: center bottom;
+}
+
+.wave-path--back {
+  animation: waveMoveBack 9s ease-in-out infinite;
+}
+
+.wave-path--front {
+  animation: waveMoveFront 7s ease-in-out infinite;
+}
+
+@keyframes waveMoveBack {
+  0%   { transform: translateX(0) scaleY(1); }
+  50%  { transform: translateX(-35%) scaleY(1.06); }
+  100% { transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes waveMoveFront {
+  0%   { transform: translateX(-50%) scaleY(1.04); }
+  50%  { transform: translateX(-20%) scaleY(0.96); }
+  100% { transform: translateX(0) scaleY(1.04); }
+}
+
+/* Analog pressure style variance gauge mounted on front */
+.landing-tank-gauge-overlay {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.72);
+  width: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.landing-tank-gauge-overlay .landing-gauge {
+  background: rgba(14, 22, 40, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50% 50% 50% 50% / 50% 50% 45% 45%;
+  padding: 10px 10px 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.landing-tank-gauge-overlay .landing-gauge-label {
+  display: none; /* hide label here to save vertical overlay space */
+}
+
+/* Floating telemetry cards positioned diagonally in marked zones */
+.landing-tank-telemetry {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+}
+
+.landing-tank-telemetry--top {
+  right: -90px;
+  top: 50px;
+}
+
+.landing-tank-telemetry--bottom {
+  left: -90px;
+  bottom: 30px;
+}
+
+.telemetry-pill {
+  background: rgba(14, 22, 40, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    inset 0 0 12px rgba(255, 255, 255, 0.02);
+  padding: 11px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 138px;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.telemetry-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.telemetry-pill .label {
+  color: var(--ink-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.telemetry-pill .value {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.telemetry-pill .value--green {
+  color: var(--green);
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
+
+.telemetry-pill .value--danger {
+  color: var(--red);
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+
+/* ─ Fuel gauge resetting wrap ─ */
 .landing-gauge-wrap {
   text-align: center;
   width: 100%;
@@ -618,69 +811,6 @@
   max-width: 320px;
   width: 100%;
   margin: 0 auto;
-  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.25));
-}
-
-.gauge-needle-group {
-  animation: needleSwing 2.2s cubic-bezier(0.25, 0.1, 0.25, 1.4) both 0.9s;
-  transform-origin: 100px 108px;
-}
-
-.landing-gauge-label {
-  color: rgba(237, 242, 247, 0.35);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  margin-top: 12px;
-  text-transform: uppercase;
-}
-
-/* ─ Floating metrics ─ */
-.landing-floating-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  width: 100%;
-}
-
-.landing-metric-card {
-  animation: cardBob 4s ease-in-out infinite;
-  background: rgba(20, 28, 46, 0.82);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  flex: 1;
-  min-width: 100px;
-  padding: 12px 14px;
-  text-align: center;
-  transition: border-color 0.2s ease;
-}
-
-.landing-metric-card span {
-  color: var(--ink-muted);
-  display: block;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-}
-
-.landing-metric-card strong {
-  color: var(--ink);
-  display: block;
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.landing-metric-card--danger {
-  border-color: rgba(220, 38, 38, 0.22);
-}
-
-.landing-metric-card--danger strong {
-  color: #f87171;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
