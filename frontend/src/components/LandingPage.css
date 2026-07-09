@@ -1,14 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CSS @property — enables smooth conic-gradient border rotation
+   ───────────────────────────────────────────────────────────────────────────── */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-page {
-  --landing-ink: #10131a;
-  --landing-navy: #101626;
-  --landing-panel: #161e31;
-  --landing-muted: #6b7280;
-  --landing-line: #e5e7eb;
-  --landing-red: #d93636;
-  --landing-green: #22a36b;
-  --landing-cream: #f7f8fa;
-  background: #ffffff;
-  color: var(--landing-ink);
+  --bg-deep:    #0e1628;
+  --bg-dark:    #131e36;
+  --bg-panel:   #182240;
+  --bg-card:    #1e2b4a;
+  --ink:        #edf2f7;
+  --ink-muted:  #94a3b8;
+  --red:        #ef4444;
+  --amber:      #f59e0b;
+  --green:      #22c55e;
+  --navy:       #101626;
+  --border:     rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(255, 255, 255, 0.16);
+
+  background: var(--bg-deep);
+  color: var(--ink);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100vh;
 }
@@ -17,82 +36,98 @@
   box-sizing: border-box;
 }
 
-/* ─── Keyframes ─────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   KEYFRAMES
+   ───────────────────────────────────────────────────────────────────────────── */
 @keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(32px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes orbPulse {
-  0%, 100% {
-    transform: translateY(-50%) scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateY(-50%) scale(1.14);
-    opacity: 0.85;
-  }
+  0%, 100% { opacity: 0.55; transform: scale(1) translateY(-50%); }
+  50%       { opacity: 0.85; transform: scale(1.15) translateY(-50%); }
 }
 
 @keyframes orbPulse2 {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(1.2);
-  }
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.2); }
 }
 
 @keyframes shimmer {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 250%;
-  }
+  0%   { left: -120%; }
+  100% { left: 260%; }
 }
 
 @keyframes chevronBounce {
-  0%, 100% {
-    transform: translateX(-50%) translateY(0);
-    opacity: 0.45;
-  }
-  50% {
-    transform: translateX(-50%) translateY(7px);
-    opacity: 0.7;
-  }
+  0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); }
+  50%       { opacity: 0.7; transform: translateX(-50%) translateY(8px); }
 }
 
-@keyframes barGrow {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
+@keyframes needleSwing {
+  0%   { transform: rotate(-60deg); }
+  75%  { transform: rotate(66deg); }
+  88%  { transform: rotate(57deg); }
+  100% { transform: rotate(62deg); }
 }
 
-@keyframes ringPulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.72;
-  }
+@keyframes cardBob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
 }
 
-/* ─── Scroll reveal ──────────────────────────────────────────────────────────── */
+@keyframes pipeFlow {
+  0%   { transform: translateX(-6px); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(54px); opacity: 0; }
+}
+
+@keyframes alertBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.8); }
+}
+
+@keyframes severityPulse {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1; box-shadow: 0 0 12px rgba(220, 38, 38, 0.6); }
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.8); }
+}
+
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes rotateBorder {
+  to { --border-angle: 360deg; }
+}
+
+@keyframes consoleFadeIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes ctaOrb {
+  0%, 100% { transform: translateY(-50%) scale(1); opacity: 0.3; }
+  50%       { transform: translateY(-50%) scale(1.18); opacity: 0.5; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCROLL REVEAL
+   ───────────────────────────────────────────────────────────────────────────── */
 .reveal {
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(28px);
   transition: opacity 0.65s ease, transform 0.65s ease;
 }
 
@@ -101,24 +136,137 @@
   transform: translateY(0);
 }
 
-/* ─── Navigation ─────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   JERRYCAN SCROLL TRACKER  (fixed top-right, upright can, drip grows down)
+   ─────────────────────────────────────────────────────────────────────────────
+   The jerrycan sits upright. A dark-amber drip fill grows downward from
+   the bottom of the can proportionally to scroll progress. A small oil pool
+   fades in near the bottom when you're close to the end of the page.
+   ───────────────────────────────────────────────────────────────────────────── */
+.fs-tracker {
+  height: calc(100vh - 120px);  /* dynamic sidebar height */
+  pointer-events: none;
+  position: fixed;
+  right: 24px;
+  top: 90px;                   /* sits below nav */
+  width: 60px;
+  z-index: 150;
+}
+
+/* Jerrycan tilts as scroll progresses to pour the oil */
+.fs-tracker-can {
+  position: absolute;
+  left: 5px;
+  top: 0;
+  transform: rotate(calc(var(--scroll-progress, 0) * -60deg));
+  transform-origin: 19.2px 6.7px; /* exact center of spout opening */
+  transition: transform 0.1s ease-out;
+  width: 50px;
+}
+
+.fs-tracker-can svg {
+  display: block;
+  height: auto;
+  width: 50px;
+}
+
+/* Vertical track aligned perfectly under the stationary spout */
+.fs-tracker-drip-track {
+  position: absolute;
+  left: 24.2px;                /* can.left (5px) + spout.X (19.2px) = 24.2px */
+  top: 6.7px;                  /* spout.Y (6.7px) */
+  bottom: 24px;
+  width: 4px;
+}
+
+/* Background track line */
+.fs-tracker-drip-track::before {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  bottom: 0;
+  content: '';
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+/* The fill — grows from 0% → 100% height as scroll progresses */
+.fs-tracker-drip-fill {
+  background: linear-gradient(
+    180deg,
+    rgba(34, 197, 94, 0.95) 0%,   /* matched to dashboard green */
+    rgba(22, 163, 74, 0.85)   60%,
+    rgba(21, 128, 61, 0.65)    100%
+  );
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+  height: calc(var(--scroll-progress, 0) * 100%);
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: height 0.12s ease-out;
+}
+
+/* Teardrop drip at the tip of the fill — follows scroll progress */
+.fs-tracker-drip-drop {
+  background: rgba(34, 197, 94, 0.9);
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+  height: 10px;
+  left: 50%;
+  opacity: clamp(0, calc(var(--scroll-progress, 0) * 6), 1);
+  position: absolute;
+  top: calc(var(--scroll-progress, 0) * 100% - 2px);
+  transform: translateX(-50%);
+  transition: top 0.12s ease-out, opacity 0.12s ease;
+  width: 8px;
+}
+
+/* Oil pool — appears as an ellipse blob when scroll > 70% */
+.fs-tracker-pool {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(34, 197, 94, 0.65) 0%,
+    rgba(22, 163, 74, 0.35) 55%,
+    transparent 80%
+  );
+  border-radius: 50%;
+  filter: blur(3px);
+  position: absolute;
+  bottom: 0;
+  left: -8px;
+  height: 22px;
+  opacity: clamp(0, calc((var(--scroll-progress, 0) - 0.65) * 3), 1);
+  transform: scaleX(clamp(0.1, calc(0.1 + var(--scroll-progress, 0) * 1.2), 1.3));
+  transform-origin: center top;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  width: 76px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NAVIGATION
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-nav {
   align-items: center;
-  background: rgba(13, 19, 33, 0.97);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(7, 9, 15, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+  box-shadow: 0 1px 0 rgba(245, 158, 11, 0.06);
   display: flex;
-  gap: 24px;
+  gap: 20px;
   justify-content: space-between;
   left: 0;
-  padding: 14px clamp(18px, 4vw, 56px);
+  padding: 12px clamp(18px, 4vw, 56px);
   position: fixed;
   right: 0;
   top: 0;
   z-index: 200;
 }
 
+/* Reset button styles inside nav */
 .landing-brand,
 .landing-nav-links button,
 .landing-login {
@@ -130,68 +278,68 @@
 
 .landing-brand {
   align-items: center;
-  color: #ffffff;
+  color: var(--ink);
   display: inline-flex;
   font-size: 16px;
   font-weight: 800;
   gap: 10px;
   padding: 0;
-  white-space: nowrap;
   transition: opacity 0.2s ease;
+  white-space: nowrap;
 }
 
-.landing-brand:hover {
-  opacity: 0.82;
-}
+.landing-brand:hover { opacity: 0.82; }
 
 .landing-brand-mark {
-  align-items: center;
-  background: var(--landing-red);
-  border-radius: 8px;
-  box-shadow: 0 4px 18px rgba(217, 54, 54, 0.45);
-  display: inline-flex;
-  height: 34px;
-  justify-content: center;
-  width: 34px;
+  display: block;
+  flex-shrink: 0;
+  height: 38px;
+  width: 38px;
+}
+
+.landing-brand-mark svg {
+  display: block;
+  height: 100%;
+  width: 100%;
 }
 
 .landing-nav-links {
   align-items: center;
   display: flex;
-  gap: 18px;
+  gap: 16px;
 }
 
 .landing-nav-links a,
 .landing-nav-links button:not(.landing-login) {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 0;
-  text-decoration: none;
-  white-space: nowrap;
-  position: relative;
-  transition: color 0.2s ease;
   background: none;
   border: none;
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 0;
+  position: relative;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  white-space: nowrap;
 }
 
 .landing-nav-links a::after,
 .landing-nav-links button:not(.landing-login)::after {
+  background: var(--amber);
+  bottom: 2px;
   content: '';
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  width: 0;
   height: 1.5px;
-  background: var(--landing-red);
-  transition: width 0.26s ease;
+  left: 0;
+  position: absolute;
+  transition: width 0.25s ease;
+  width: 0;
 }
 
 .landing-nav-links a:hover,
 .landing-nav-links button:not(.landing-login):hover {
-  color: #ffffff;
+  color: var(--ink);
 }
 
 .landing-nav-links a:hover::after,
@@ -199,536 +347,587 @@
   width: 100%;
 }
 
+/* LIVE badge */
+.landing-nav-live {
+  align-items: center;
+  background: rgba(34, 197, 94, 0.09);
+  border: 1px solid rgba(34, 197, 94, 0.24);
+  border-radius: 100px;
+  color: var(--green);
+  display: flex;
+  font-size: 10.5px;
+  font-weight: 700;
+  gap: 6px;
+  letter-spacing: 0.1em;
+  padding: 5px 12px;
+  text-transform: uppercase;
+}
+
+.landing-nav-live-dot {
+  animation: livePulse 1.6s ease-in-out infinite;
+  background: var(--green);
+  border-radius: 50%;
+  display: block;
+  flex-shrink: 0;
+  height: 6px;
+  width: 6px;
+}
+
+/* Login button */
 .landing-nav-links .landing-login {
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.17);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
-  color: #ffffff;
+  color: var(--ink);
   font-size: 13px;
   font-weight: 700;
-  padding: 8px 16px;
+  padding: 7px 16px;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
 }
 
 .landing-nav-links .landing-login:hover {
-  background: rgba(255, 255, 255, 0.17);
+  background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
 }
 
-/* ─── Hero ──────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   HERO
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-hero {
   align-items: center;
-  background: #0d1321;
+  background: var(--bg-deep);
   display: flex;
+  gap: clamp(32px, 5vw, 72px);
   min-height: 96vh;
   overflow: hidden;
-  padding: 112px clamp(18px, 6vw, 88px) 80px;
+  padding: 110px clamp(18px, 6vw, 88px) 80px;
   position: relative;
 }
 
-/* Atmospheric glow orb — primary (right side) */
-.landing-hero-orb {
+/* Background layer (orbs + grid) */
+.landing-hero-bg {
+  inset: 0;
+  pointer-events: none;
   position: absolute;
-  width: 740px;
-  height: 740px;
+}
+
+.landing-hero-orb {
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(217, 54, 54, 0.32) 0%,
-    rgba(217, 54, 54, 0.12) 42%,
-    transparent 70%
-  );
   filter: blur(80px);
-  right: -90px;
+  position: absolute;
+}
+
+.landing-hero-orb--red {
+  animation: orbPulse 7.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(220,38,38,0.35) 0%, rgba(220,38,38,0.1) 45%, transparent 70%);
+  height: 640px;
+  right: -60px;
   top: 50%;
   transform: translateY(-50%);
-  animation: orbPulse 7s ease-in-out infinite;
-  z-index: 1;
-  pointer-events: none;
+  width: 640px;
 }
 
-/* Secondary orb — warm amber accent */
-.landing-hero-orb--secondary {
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 138, 50, 0.16) 0%,
-    rgba(255, 100, 30, 0.06) 52%,
-    transparent 72%
-  );
-  filter: blur(90px);
+.landing-hero-orb--amber {
+  animation: orbPulse2 9.5s ease-in-out infinite 2s;
+  background: radial-gradient(circle, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.05) 55%, transparent 72%);
+  height: 380px;
   right: 28%;
-  top: 15%;
-  transform: none;
-  animation: orbPulse2 9s ease-in-out infinite 2.5s;
+  top: 18%;
+  width: 380px;
 }
 
-.landing-hero-shade {
-  background: linear-gradient(
-    90deg,
-    rgba(6, 9, 16, 0.75) 0%,
-    rgba(6, 9, 16, 0.5) 55%,
-    rgba(6, 9, 16, 0.08) 100%
-  );
+.landing-hero-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 56px 56px;
   inset: 0;
   position: absolute;
+}
+
+/* Left copy column */
+.landing-hero-copy {
+  animation: fadeSlideUp 0.9s ease both 0.1s;
+  color: var(--ink);
+  flex: 1;
+  max-width: 620px;
+  position: relative;
   z-index: 2;
 }
 
-.landing-hero-copy {
-  color: #ffffff;
-  max-width: 760px;
+/* Right visual column */
+.landing-hero-visual {
+  align-items: center;
+  display: flex;
+  flex: 0 0 400px;
+  flex-direction: column;
+  gap: 24px;
   position: relative;
-  z-index: 3;
-  animation: fadeSlideUp 0.9s ease both 0.1s;
+  z-index: 2;
 }
 
-/* Scroll chevron indicator */
+/* Scroll chevron */
 .landing-hero-scroll {
-  position: absolute;
-  bottom: 30px;
+  animation: chevronBounce 2.4s ease-in-out infinite;
+  bottom: 28px;
+  color: rgba(255, 255, 255, 0.32);
   left: 50%;
+  pointer-events: none;
+  position: absolute;
   transform: translateX(-50%);
   z-index: 3;
-  color: rgba(255, 255, 255, 0.38);
-  animation: chevronBounce 2.4s ease-in-out infinite;
-  pointer-events: none;
 }
 
-/* ─── Eyebrow labels ────────────────────────────────────────────────────────── */
+/* ─ Text hierarchy ─ */
 .landing-eyebrow,
 .landing-section-heading span,
 .landing-final-cta span {
-  color: var(--landing-red);
+  color: var(--green);
   display: block;
   font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.14em;
   margin-bottom: 14px;
   text-transform: uppercase;
 }
 
 .landing-hero h1 {
-  font-size: clamp(54px, 12vw, 132px);
+  font-size: clamp(60px, 13vw, 144px);
   font-weight: 900;
-  line-height: 0.86;
+  line-height: 0.84;
   margin: 0 0 22px;
 }
 
 .landing-hero-line {
-  color: #ffffff;
-  font-size: clamp(22px, 3.2vw, 42px);
+  color: var(--ink);
+  font-size: clamp(20px, 3vw, 38px);
   font-weight: 800;
-  line-height: 1.12;
-  margin: 0 0 18px;
-  max-width: 820px;
+  line-height: 1.14;
+  margin: 0 0 16px;
+  max-width: 780px;
 }
 
 .landing-hero-sub {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: clamp(15px, 1.7vw, 17.5px);
+  color: rgba(237, 242, 247, 0.62);
+  font-size: clamp(14px, 1.6vw, 17px);
   font-weight: 400;
-  line-height: 1.68;
+  line-height: 1.7;
   margin: 0;
-  max-width: 580px;
+  max-width: 560px;
 }
 
-/* ─── CTA buttons ─────────────────────────────────────────────────────────── */
+/* ─ Hero CTA buttons ─ */
 .landing-actions {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 34px;
+  margin-top: 32px;
 }
 
-.landing-primary,
-.landing-secondary {
+.landing-primary {
   align-items: center;
+  background: var(--green);
+  border: 1px solid var(--green);
   border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(34, 197, 94, 0.4);
+  color: #0e1628;
   display: inline-flex;
   font-size: 14px;
   font-weight: 700;
   justify-content: center;
   min-height: 48px;
+  overflow: hidden;
   padding: 0 26px;
+  position: relative;
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.landing-primary {
-  background: var(--landing-red);
-  border: 1px solid var(--landing-red);
-  box-shadow: 0 4px 22px rgba(217, 54, 54, 0.38);
-  color: #ffffff;
-  overflow: hidden;
-  position: relative;
-}
-
 .landing-primary:hover {
-  background: #c42d2d;
-  box-shadow: 0 10px 32px rgba(217, 54, 54, 0.5);
+  background: #16a34a;
+  box-shadow: 0 10px 34px rgba(34, 197, 94, 0.55);
   transform: translateY(-2px);
 }
 
-/* Shimmer sweep animation */
+/* Shimmer sweep */
 .landing-primary--shimmer::after {
-  animation: shimmer 3.8s ease-in-out infinite 2.2s;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.22) 50%, transparent 100%);
+  animation: shimmer 4s ease-in-out infinite 2.5s;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%);
   content: '';
   height: 100%;
-  left: -100%;
+  left: -120%;
   pointer-events: none;
   position: absolute;
   top: 0;
   width: 60%;
 }
 
-.landing-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  cursor: pointer;
-}
-
-.landing-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-.landing-secondary-light {
-  background: #ffffff;
-  border-color: #ffffff;
-  color: var(--landing-navy);
-}
-
-.landing-secondary-light:hover {
-  background: #f0f1f3;
-  box-shadow: 0 4px 16px rgba(16, 22, 38, 0.14);
-  transform: translateY(-1px);
-}
-
-/* ─── Dashboard scene (hero bg) ─────────────────────────────────────────────── */
-.landing-dashboard-scene {
-  inset: 0;
-  opacity: 0.7;
-  position: absolute;
-  z-index: 1;
-}
-
-.landing-dashboard-scene::before {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 72px 72px;
-  content: "";
-  inset: 0;
-  position: absolute;
-}
-
-.landing-scene-panel {
-  background: rgba(22, 30, 49, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 10px;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.42);
-  color: #ffffff;
-  position: absolute;
-}
-
-.landing-scene-main {
-  bottom: 11%;
-  min-height: 360px;
-  padding: 24px;
-  right: 6%;
-  width: min(560px, 48vw);
-}
-
-.landing-scene-side {
-  padding: 18px;
-  right: 14%;
-  top: 18%;
-  width: 250px;
-}
-
-.landing-scene-alert {
-  bottom: 30%;
-  left: 54%;
-  padding: 18px;
-  width: 240px;
-}
-
-.landing-scene-panel span,
-.landing-scene-panel small {
-  color: rgba(255, 255, 255, 0.52);
-  display: block;
-  font-size: 12px;
-}
-
-.landing-scene-panel strong {
-  display: block;
-  font-size: 18px;
-  margin-top: 5px;
-}
-
-.landing-scene-topline,
-.landing-console-header {
+.landing-ghost {
   align-items: center;
-  display: flex;
-  justify-content: space-between;
-}
-
-.landing-scene-topline strong,
-.landing-console-header strong {
-  border-radius: 6px;
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.landing-scene-topline strong {
-  background: rgba(217, 54, 54, 0.18);
-  color: #ffb8b8;
-}
-
-.landing-scene-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 24px 0;
-}
-
-.landing-scene-grid div {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  padding: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 24px;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.18s ease;
 }
 
-.landing-chart {
-  align-items: end;
+.landing-ghost:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.landing-ghost--outline {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.landing-ghost--outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─ Fuel gauge ─ */
+.landing-gauge-wrap {
+  text-align: center;
+  width: 100%;
+}
+
+.landing-gauge {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto;
+  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.25));
+}
+
+.gauge-needle-group {
+  animation: needleSwing 2.2s cubic-bezier(0.25, 0.1, 0.25, 1.4) both 0.9s;
+  transform-origin: 100px 108px;
+}
+
+.landing-gauge-label {
+  color: rgba(237, 242, 247, 0.35);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-top: 12px;
+  text-transform: uppercase;
+}
+
+/* ─ Floating metrics ─ */
+.landing-floating-metrics {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  height: 160px;
-  padding-top: 20px;
+  justify-content: center;
+  width: 100%;
 }
 
-.landing-chart span {
-  background: linear-gradient(180deg, var(--landing-green), rgba(34, 163, 107, 0.45));
-  border-radius: 6px 6px 0 0;
+.landing-metric-card {
+  animation: cardBob 4s ease-in-out infinite;
+  background: rgba(20, 28, 46, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   flex: 1;
-  min-height: 24px;
-  transform-origin: bottom;
-  animation: barGrow 0.8s ease both;
+  min-width: 100px;
+  padding: 12px 14px;
+  text-align: center;
+  transition: border-color 0.2s ease;
 }
 
-/* ─── Risk / meter bars ──────────────────────────────────────────────────────── */
-.landing-risk-line {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  height: 7px;
-  margin-top: 18px;
-  overflow: hidden;
-}
-
-.landing-risk-line::after {
-  background: linear-gradient(90deg, var(--landing-red), #ff6b6b);
-  content: "";
+.landing-metric-card span {
+  color: var(--ink-muted);
   display: block;
-  height: 100%;
-  width: 82%;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
 }
 
-.landing-console-meter {
-  background: rgba(16, 22, 38, 0.08);
-  border-radius: 8px;
-  height: 7px;
-  margin-top: 18px;
-  overflow: hidden;
-}
-
-.landing-console-meter span {
-  background: linear-gradient(90deg, var(--landing-green), rgba(34, 163, 107, 0.5));
-  border-radius: 4px;
+.landing-metric-card strong {
+  color: var(--ink);
   display: block;
-  height: 100%;
-  width: 68%;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
 }
 
-/* ─── Shared section layout ─────────────────────────────────────────────────── */
+.landing-metric-card--danger {
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
+.landing-metric-card--danger strong {
+  color: #f87171;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SHARED SECTION LAYOUT
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-section {
   padding: clamp(72px, 9vw, 118px) clamp(18px, 6vw, 88px);
 }
 
 .landing-section-heading {
-  margin: 0 auto 48px;
+  margin: 0 auto 52px;
   max-width: 760px;
   text-align: center;
 }
 
-.landing-section-heading h2,
-.landing-final-cta h2 {
-  color: var(--landing-ink);
-  font-size: clamp(28px, 4.5vw, 50px);
+.landing-section-heading h2 {
+  color: var(--ink);
+  font-size: clamp(28px, 4.5vw, 52px);
   font-weight: 800;
   line-height: 1.08;
   margin: 0;
 }
 
 .landing-section-heading p {
-  color: var(--landing-muted);
+  color: var(--ink-muted);
   font-size: 16px;
-  line-height: 1.68;
+  line-height: 1.7;
   margin: 18px auto 0;
-  max-width: 600px;
+  max-width: 580px;
 }
 
-/* Shared card base */
-.landing-pain-card,
-.landing-step,
-.landing-plan,
-.landing-team-card,
-.landing-console {
-  background: #ffffff;
-  border: 1px solid var(--landing-line);
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(16, 22, 38, 0.06);
+/* ─────────────────────────────────────────────────────────────────────────────
+   PAIN SECTION  — "Alert console"
+   ───────────────────────────────────────────────────────────────────────────── */
+.landing-pain-section {
+  background: var(--bg-deep);
 }
 
-/* Shared grid layout */
-.landing-pain-grid,
-.landing-step-grid,
-.landing-pricing-grid,
-.landing-team-grid {
+.landing-pain-grid {
   display: grid;
-  gap: 16px;
+  gap: 14px;
+  grid-template-columns: repeat(6, 1fr);
   margin: 0 auto;
   max-width: 1160px;
 }
 
-/* ─── Pain section ───────────────────────────────────────────────────────────── */
-.landing-pain-section,
-.landing-pricing-section {
-  background: var(--landing-cream);
+/* 2-card top row */
+.landing-pain-card:nth-child(1),
+.landing-pain-card:nth-child(2) {
+  grid-column: span 3;
 }
 
-.landing-pain-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+/* 3-card bottom row */
+.landing-pain-card:nth-child(3),
+.landing-pain-card:nth-child(4),
+.landing-pain-card:nth-child(5) {
+  grid-column: span 2;
 }
 
 .landing-pain-card {
-  border-left: 4px solid transparent;
+  background: rgba(220, 38, 38, 0.05);
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   cursor: default;
-  min-height: 166px;
   padding: 22px;
   transition:
-    border-color 0.26s ease,
-    background 0.26s ease,
-    transform 0.26s ease,
-    box-shadow 0.26s ease;
+    border-color 0.25s ease,
+    background 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .landing-pain-card:hover {
-  background: rgba(217, 54, 54, 0.025);
-  border-left-color: var(--landing-red);
-  box-shadow: 0 18px 52px rgba(16, 22, 38, 0.12);
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.4);
+  border-left-color: var(--red);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.35), 0 0 24px rgba(220, 38, 38, 0.12);
   transform: translateY(-4px);
 }
 
-.landing-pain-icon {
+.landing-pain-card-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.landing-alert-dot {
+  animation: alertBlink 1.8s ease-in-out infinite;
+  background: var(--red);
+  border-radius: 50%;
   display: block;
-  font-size: 18px;
-  margin-bottom: 16px;
-  opacity: 0.72;
-  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
 }
 
-.landing-pain-card:hover .landing-pain-icon {
-  opacity: 1;
+.landing-alert-label {
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.landing-pain-card p,
-.landing-step p,
-.landing-plan p,
-.landing-team-card p,
-.landing-feature-copy p {
-  color: var(--landing-muted);
+.landing-pain-card p {
+  color: var(--ink-muted);
   font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 16px;
+}
+
+.landing-severity-bar {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  height: 5px;
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+
+.landing-severity-fill {
+  animation: severityPulse 2.5s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--red), #f87171);
+  border-radius: 8px;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.landing-severity-label {
+  color: rgba(248, 113, 113, 0.65);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   HOW IT WORKS  — Pipeline
+   ───────────────────────────────────────────────────────────────────────────── */
+.landing-how-section {
+  background: var(--bg-dark);
+}
+
+.landing-step-pipeline {
+  align-items: flex-start;
+  display: flex;
+  gap: 0;
+  margin: 0 auto;
+  max-width: 1160px;
+}
+
+.landing-step {
+  background: rgba(20, 28, 46, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 28px 20px 24px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.landing-step:hover {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.3), 0 0 24px rgba(245, 158, 11, 0.08);
+  transform: translateY(-4px);
+}
+
+.landing-step-node {
+  align-items: center;
+  background: rgba(34, 197, 94, 0.08);
+  border: 2px solid rgba(34, 197, 94, 0.3);
+  border-radius: 50%;
+  display: flex;
+  height: 52px;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+  transition: background 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  width: 52px;
+  z-index: 1;
+}
+
+.landing-step-node span {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.landing-step:hover .landing-step-node {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: var(--green);
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.3);
+  transform: scale(1.08);
+}
+
+.landing-step h3 {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.landing-step p {
+  color: var(--ink-muted);
+  font-size: 13.5px;
   line-height: 1.65;
   margin: 0;
 }
 
-/* ─── How it works ───────────────────────────────────────────────────────────── */
-.landing-how-section {
-  background: #ffffff;
-}
-
-.landing-step-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* Pipe connectors between steps */
+.landing-pipe {
+  align-self: flex-start;
+  flex: 0 0 44px;
+  padding-top: 42px; /* = 28 (card pad-top) + 26 (node radius) - 12 (half pipe height) */
   position: relative;
 }
 
-.landing-step {
-  padding: 28px 24px;
-  transition: transform 0.26s ease, box-shadow 0.26s ease;
-}
-
-.landing-step:hover {
-  box-shadow: 0 22px 60px rgba(16, 22, 38, 0.1);
-  transform: translateY(-5px);
-}
-
-.landing-step-number {
-  align-items: center;
-  background: rgba(217, 54, 54, 0.08);
-  border: 2px solid rgba(217, 54, 54, 0.28);
-  border-radius: 50%;
-  color: var(--landing-red);
-  display: flex;
-  font-size: 12px;
-  font-weight: 900;
-  height: 44px;
-  justify-content: center;
-  margin-bottom: 28px;
-  position: relative;
-  transition: background 0.26s ease, border-color 0.26s ease, transform 0.26s ease;
+.landing-pipe svg {
+  display: block;
+  height: 24px;
   width: 44px;
-  z-index: 1;
 }
 
-.landing-step:hover .landing-step-number {
-  background: rgba(217, 54, 54, 0.18);
-  border-color: var(--landing-red);
-  transform: scale(1.1);
+.landing-pipe-dot {
+  animation: pipeFlow 2.8s linear infinite;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+  height: 9px;
+  left: 0;
+  position: absolute;
+  top: 49px;
+  width: 9px;
 }
 
-.landing-step h3,
-.landing-plan h3,
-.landing-team-card h3 {
-  color: var(--landing-ink);
-  font-size: 17px;
-  font-weight: 700;
-  margin: 0 0 10px;
-}
-
-/* ─── Features section ───────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   FEATURES SECTION  — Terminal console
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-features-section {
-  background: var(--landing-navy);
+  background: var(--bg-panel);
 }
 
 .landing-features-section .landing-section-heading h2 {
-  color: #ffffff;
+  color: var(--ink);
 }
 
 .landing-features-section .landing-section-heading p {
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--ink-muted);
 }
 
 .landing-feature-layout {
   align-items: stretch;
   display: grid;
-  gap: 32px;
+  gap: 36px;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 480px);
   margin: 0 auto;
   max-width: 1080px;
@@ -739,10 +938,11 @@
 }
 
 .landing-feature-copy p {
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--ink-muted);
   font-size: 16px;
   line-height: 1.72;
-  max-width: 540px;
+  margin: 0;
+  max-width: 520px;
 }
 
 .landing-feature-list {
@@ -752,119 +952,206 @@
   margin-top: 28px;
 }
 
-.landing-feature-list div {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 14px 16px;
-  transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
-}
-
-.landing-feature-list div:hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateX(3px);
-}
-
-/* Monitor console widget */
-.landing-console {
-  padding: 24px;
-}
-
-.landing-console-header {
-  border-bottom: 1px solid var(--landing-line);
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-}
-
-.landing-console-header span {
-  color: var(--landing-ink);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.landing-console-header strong {
-  background: rgba(34, 163, 107, 0.12);
-  border-radius: 6px;
-  color: #147a51;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 10px;
-}
-
-.landing-console-row {
+.landing-feature-pill {
   align-items: center;
-  border-bottom: 1px solid #f3f4f6;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: var(--ink);
   display: flex;
-  justify-content: space-between;
-  padding: 14px 0;
-}
-
-.landing-console-row span {
-  color: var(--landing-muted);
-  font-size: 13px;
-}
-
-.landing-console-row strong {
-  color: var(--landing-ink);
   font-size: 13px;
   font-weight: 600;
+  gap: 10px;
+  padding: 13px 14px;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.landing-console-row-risk strong {
-  color: var(--landing-red);
+.landing-feature-pill:hover {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(245, 158, 11, 0.2);
+  transform: translateX(4px);
 }
 
-/* Pricing */
+.landing-feature-icon {
+  color: var(--amber);
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+/* Terminal widget */
+.landing-console {
+  background: #0a0c12;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.landing-console-titlebar {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+/* Elegant real-time operations monitor layout */
+.landing-console {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.landing-console-titlebar {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+}
+
+.landing-console-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dot {
+  border-radius: 50%;
+  display: block;
+  height: 10px;
+  width: 10px;
+}
+
+.dot--red   { background: rgba(239, 68, 68, 0.6); }
+.dot--amber { background: rgba(245, 158, 11, 0.6); }
+.dot--green { background: rgba(34, 197, 94, 0.6); }
+
+.landing-console-path {
+  color: var(--ink-muted);
+  flex: 1;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.landing-console-live {
+  color: var(--green);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.landing-console-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing-log-item {
+  animation: consoleFadeIn 0.5s ease both;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding-bottom: 12px;
+}
+
+.landing-log-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.landing-log-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.landing-log-time {
+  color: var(--ink-muted);
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.landing-log-message {
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.tag {
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.tag--ok   { background: rgba(34, 197, 94, 0.12); color: var(--green); }
+.tag--warn { background: rgba(239, 68, 68, 0.12); color: var(--red); }
+.tag--err  { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRICING SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
+.landing-pricing-section {
+  background: var(--bg-deep);
+}
+
 .landing-pricing-grid {
   align-items: center;
+  display: grid;
+  gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 auto;
+  max-width: 1100px;
 }
 
 .landing-plan {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   min-height: 430px;
   padding: 28px;
   position: relative;
-  transition: transform 0.26s ease, box-shadow 0.26s ease;
+  transition: transform 0.26s ease, box-shadow 0.26s ease, border-color 0.26s ease;
 }
 
 .landing-plan:not(.landing-plan-featured):hover {
-  box-shadow: 0 24px 64px rgba(16, 22, 38, 0.12);
+  border-color: var(--border-bright);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
   transform: translateY(-5px);
 }
 
-/* Featured plan — inverted dark card */
+/* ─ Featured plan: Clean, extremely readable style with green border ─ */
 .landing-plan-featured {
-  background: var(--landing-navy);
-  border-color: rgba(217, 54, 54, 0.42);
-  box-shadow:
-    0 32px 80px rgba(217, 54, 54, 0.2),
-    0 8px 24px rgba(0, 0, 0, 0.22);
+  background: var(--bg-card);
+  border: 2px solid var(--green);
+  box-shadow: 0 32px 80px rgba(34, 197, 94, 0.12), 0 8px 24px rgba(0, 0, 0, 0.4);
   transform: scale(1.04);
   z-index: 2;
 }
 
 .landing-plan-featured:hover {
-  box-shadow:
-    0 44px 96px rgba(217, 54, 54, 0.28),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 40px 90px rgba(34, 197, 94, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
   transform: scale(1.05) translateY(-4px);
-}
-
-.landing-plan-featured h3 {
-  color: #ffffff;
 }
 
 .landing-plan-badge {
   align-self: flex-start;
-  background: rgba(217, 54, 54, 0.22);
+  background: rgba(245, 158, 11, 0.14);
   border-radius: 6px;
-  color: #ffb8b8;
+  color: var(--amber);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -873,14 +1160,17 @@
   text-transform: uppercase;
 }
 
-.landing-plan-limits {
-  color: var(--landing-muted);
-  font-size: 13px;
-  margin-bottom: 24px;
+.landing-plan h3 {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px;
 }
 
-.landing-plan-featured .landing-plan-limits {
-  color: rgba(255, 255, 255, 0.48);
+.landing-plan-limits {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin-bottom: 22px;
 }
 
 .landing-plan-price {
@@ -888,41 +1178,38 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
 .landing-plan strong {
-  color: var(--landing-ink);
+  color: var(--ink);
   display: block;
-  font-size: clamp(30px, 4vw, 40px);
+  font-size: clamp(30px, 4vw, 38px);
+  font-weight: 800;
   line-height: 1;
 }
 
 .landing-plan-featured .landing-plan-price strong {
   color: #4ade80;
-  font-size: clamp(34px, 4.5vw, 46px);
+  font-size: clamp(34px, 4.5vw, 44px);
 }
 
 .landing-plan-price span {
-  color: var(--landing-muted);
+  color: var(--ink-muted);
   font-size: 14px;
-}
-
-.landing-plan-featured .landing-plan-price span {
-  color: rgba(255, 255, 255, 0.44);
 }
 
 .landing-plan-features {
   flex: 1;
   list-style: none;
-  margin: 0 0 28px;
+  margin: 0 0 24px;
   padding: 0;
 }
 
 .landing-plan-features li {
-  border-bottom: 1px solid #f0f1f3;
-  color: #4b5563;
-  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--ink-muted);
+  font-size: 13.5px;
   line-height: 1.45;
   padding: 10px 0 10px 22px;
   position: relative;
@@ -930,156 +1217,170 @@
 
 .landing-plan-features li::before {
   color: #4ade80;
-  content: "✓";
+  content: '✓';
   font-weight: 900;
   left: 0;
   position: absolute;
   top: 10px;
 }
 
-.landing-plan-featured .landing-plan-features li {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.74);
-}
-
-.landing-plan-featured .landing-plan-features li::before {
-  color: #4ade80;
-}
-
-.landing-plan a {
+.landing-plan-cta {
   align-items: center;
-  background: var(--landing-navy);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  color: #ffffff;
-  display: inline-flex;
+  color: var(--ink);
+  display: flex;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 700;
   justify-content: center;
   margin-top: auto;
   min-height: 44px;
   text-decoration: none;
-  transition: background 0.22s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.landing-plan a:hover {
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2);
+.landing-plan-cta:hover {
+  background: rgba(255, 255, 255, 0.14);
   transform: translateY(-1px);
 }
 
-.landing-plan-featured a {
-  background: var(--landing-red);
-  box-shadow: 0 4px 18px rgba(217, 54, 54, 0.42);
+.landing-plan-featured .landing-plan-cta {
+  background: var(--red);
+  border-color: var(--red);
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.45);
+  color: #ffffff;
 }
 
-.landing-plan-featured a:hover {
-  background: #c42d2d;
-  box-shadow: 0 8px 26px rgba(217, 54, 54, 0.54);
+.landing-plan-featured .landing-plan-cta:hover {
+  background: #b91c1c;
+  box-shadow: 0 8px 28px rgba(220, 38, 38, 0.6);
 }
 
-/* ─── Team ────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   TEAM SECTION
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-team-section {
-  background: #ffffff;
+  background: var(--bg-dark);
 }
 
 .landing-team-grid {
+  display: grid;
+  gap: 20px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 auto;
   max-width: 780px;
 }
 
 .landing-team-card {
-  padding: 32px 26px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 34px 26px;
   text-align: center;
-  transition: transform 0.26s ease, box-shadow 0.26s ease;
+  transition: transform 0.26s ease, box-shadow 0.26s ease, border-color 0.26s ease;
 }
 
 .landing-team-card:hover {
-  box-shadow: 0 22px 60px rgba(16, 22, 38, 0.1);
-  transform: translateY(-4px);
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3), 0 0 24px rgba(245, 158, 11, 0.06);
+  transform: translateY(-5px);
 }
 
-/* Gradient avatar ring */
+.landing-team-card h3 {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.landing-team-card p {
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Simple, sleek border ring for team avatars */
 .landing-avatar-ring {
-  animation: ringPulse 4s ease-in-out infinite;
-  background: linear-gradient(135deg, var(--landing-red) 0%, #ff8c42 50%, #d93636 100%);
-  border-radius: 50%;
   display: block;
   margin: 0 auto 20px;
   padding: 3px;
+  border-radius: 50%;
   width: fit-content;
+  position: relative;
+  background: var(--bg-panel);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .landing-avatar-photo {
   aspect-ratio: 1;
-  border: 3px solid #ffffff;
-  border-radius: 999px;
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
   display: block;
   height: 118px;
   object-fit: cover;
   width: 118px;
 }
 
-/* ─── Final CTA ──────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   FINAL CTA
+   ───────────────────────────────────────────────────────────────────────────── */
 .landing-final-cta {
-  align-items: center;
-  background: linear-gradient(135deg, #0d1321 0%, #180a0a 55%, #101626 100%);
-  color: #ffffff;
-  display: flex;
-  gap: 30px;
-  justify-content: space-between;
+  background: var(--bg-deep);
   overflow: hidden;
-  padding: clamp(56px, 7vw, 92px) clamp(18px, 6vw, 88px);
+  padding: clamp(72px, 10vw, 110px) clamp(18px, 6vw, 88px);
   position: relative;
+  text-align: center;
 }
 
-/* Ambient glow behind CTA */
-.landing-final-cta::before {
+.landing-final-cta-bg {
+  animation: ctaOrb 8s ease-in-out infinite;
   background: radial-gradient(
     circle,
-    rgba(217, 54, 54, 0.22) 0%,
-    rgba(217, 54, 54, 0.06) 50%,
+    rgba(220, 38, 38, 0.28) 0%,
+    rgba(220, 38, 38, 0.06) 50%,
     transparent 70%
   );
   border-radius: 50%;
-  content: '';
-  filter: blur(70px);
-  height: 600px;
+  filter: blur(80px);
+  height: 700px;
+  left: 50%;
   pointer-events: none;
   position: absolute;
-  right: -80px;
   top: 50%;
-  transform: translateY(-50%);
-  width: 600px;
+  transform: translate(-50%, -50%);
+  width: 700px;
+}
+
+.landing-final-cta-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.landing-final-cta span {
+  margin-bottom: 16px;
 }
 
 .landing-final-cta h2 {
-  color: #ffffff;
+  color: var(--ink);
+  font-size: clamp(28px, 5vw, 58px);
   font-weight: 800;
-  max-width: 780px;
+  line-height: 1.08;
+  margin: 0 auto 36px;
+  max-width: 880px;
 }
 
-/* ─── Desktop: step connector line ──────────────────────────────────────────── */
-@media (min-width: 981px) {
-  .landing-step-grid::before {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(217, 54, 54, 0.4) 14%,
-      rgba(217, 54, 54, 0.4) 86%,
-      transparent 100%
-    );
-    content: '';
-    height: 1px;
-    left: 13%;
-    pointer-events: none;
-    position: absolute;
-    right: 13%;
-    /* 28px card padding-top + 22px (half of 44px circle) = 50px */
-    top: 50px;
-    z-index: 0;
-  }
+.landing-final-cta .landing-actions {
+  justify-content: center;
 }
 
-/* ─── Responsive — tablet ───────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   RESPONSIVE — tablet
+   ───────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .landing-nav {
     align-items: flex-start;
@@ -1089,32 +1390,64 @@
 
   .landing-nav-links {
     flex-wrap: wrap;
-    gap: 10px 16px;
+    gap: 10px 14px;
   }
 
   .landing-hero {
-    min-height: 860px;
-    padding-top: 156px;
+    flex-direction: column;
+    min-height: auto;
+    padding-top: 140px;
+    padding-bottom: 80px;
+    gap: 48px;
   }
 
-  .landing-scene-main {
-    bottom: 6%;
-    left: 18px;
-    right: 18px;
-    width: auto;
+  .landing-hero-copy {
+    max-width: 100%;
+    text-align: center;
   }
 
-  .landing-scene-side,
-  .landing-scene-alert {
+  .landing-hero-copy .landing-hero-sub {
+    max-width: 100%;
+  }
+
+  .landing-actions {
+    justify-content: center;
+  }
+
+  .landing-hero-visual {
+    flex: none;
+    max-width: 380px;
+    width: 100%;
+  }
+
+  .landing-pain-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .landing-pain-card:nth-child(n) {
+    grid-column: span 1;
+  }
+
+  .landing-step-pipeline {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .landing-step {
+    flex: 0 0 calc(50% - 8px);
+  }
+
+  .landing-pipe {
     display: none;
   }
 
-  .landing-pain-grid,
-  .landing-step-grid,
-  .landing-pricing-grid,
-  .landing-team-grid,
   .landing-feature-layout {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  .landing-pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
   }
 
   .landing-plan-featured {
@@ -1125,13 +1458,19 @@
     transform: translateY(-4px);
   }
 
-  .landing-final-cta {
-    align-items: flex-start;
-    flex-direction: column;
+  .landing-team-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .fs-tracker {
+    display: none; /* hide on tablet to avoid layout issues */
   }
 }
 
-/* ─── Responsive — mobile ───────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   RESPONSIVE — mobile
+   ───────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .landing-nav {
     position: absolute;
@@ -1151,38 +1490,39 @@
   }
 
   .landing-hero {
-    min-height: 880px;
     padding-left: 18px;
     padding-right: 18px;
   }
 
   .landing-actions,
   .landing-primary,
-  .landing-secondary {
+  .landing-ghost {
     width: 100%;
   }
 
-  .landing-hero-copy {
-    align-self: flex-start;
-    margin-top: 70px;
+  .landing-pain-grid {
+    grid-template-columns: 1fr;
   }
 
-  .landing-scene-main {
-    min-height: 300px;
-    padding: 16px;
+  .landing-pain-card:nth-child(n) {
+    grid-column: span 1;
   }
 
-  .landing-scene-grid,
-  .landing-pain-grid,
-  .landing-step-grid,
-  .landing-pricing-grid,
-  .landing-team-grid,
-  .landing-feature-layout,
+  .landing-step-pipeline {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .landing-step {
+    flex: none;
+    width: 100%;
+  }
+
   .landing-feature-list {
     grid-template-columns: 1fr;
   }
 
-  .landing-chart {
-    height: 110px;
+  .fs-tracker {
+    display: none;
   }
 }
