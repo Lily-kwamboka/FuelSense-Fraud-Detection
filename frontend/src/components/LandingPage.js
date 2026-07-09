@@ -132,7 +132,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       <nav className="landing-nav" aria-label="Public navigation">
         <button className="landing-brand" type="button" onClick={() => { goTo('top'); setMenuOpen(false); }}>
           <HexBrandMark />
-          <span>FuelSense</span>
+          <span>MafutaSala</span>
         </button>
 
         {/* Mobile Hamburger Toggle Button */}
