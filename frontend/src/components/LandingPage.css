@@ -173,15 +173,15 @@
 /* Vertical track aligned perfectly under the stationary spout */
 .fs-tracker-drip-track {
   position: absolute;
-  left: 24.2px;                /* can.left (5px) + spout.X (19.2px) = 24.2px */
+  left: 23.2px;                /* can.left (5px) + spout.X (19.2px) = 24.2px (fine-tuned to 23.2px for visual centering) */
   top: 6.7px;                  /* spout.Y (6.7px) */
   bottom: 24px;
-  width: 4px;
+  width: 6px;                  /* slightly thicker for viscous liquid appearance */
 }
 
 /* Background track line */
 .fs-tracker-drip-track::before {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 3px;
   bottom: 0;
   content: '';
@@ -191,16 +191,18 @@
   top: 0;
 }
 
-/* The fill — grows from 0% → 100% height as scroll progresses */
+/* The fill — grows from 0% → 100% height as scroll progresses with 3D glossy oil texture */
 .fs-tracker-drip-fill {
   background: linear-gradient(
-    180deg,
-    rgba(34, 197, 94, 0.95) 0%,   /* matched to dashboard green */
-    rgba(22, 163, 74, 0.85)   60%,
-    rgba(21, 128, 61, 0.65)    100%
+    90deg,
+    #3b2307 0%,
+    #d97706 25%,
+    #fef08a 45%,
+    #b45309 70%,
+    #451a03 100%
   );
-  border-radius: 3px;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.4), inset 1px 0 2px rgba(255, 255, 255, 0.25);
   height: calc(var(--scroll-progress, 0) * 100%);
   left: 0;
   position: absolute;
@@ -209,40 +211,48 @@
   transition: height 0.12s ease-out;
 }
 
-/* Teardrop drip at the tip of the fill — follows scroll progress */
+/* Teardrop drip at the tip of the fill — follows scroll progress with glossy refraction */
 .fs-tracker-drip-drop {
-  background: rgba(34, 197, 94, 0.9);
+  background: radial-gradient(
+    circle at 35% 35%,
+    #fef08a 0%,
+    #f59e0b 35%,
+    #78350f 70%,
+    #251002 100%
+  );
   border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
-  height: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6), inset 1px 1px 2px rgba(255, 255, 255, 0.35);
+  height: 12px;
   left: 50%;
   opacity: clamp(0, calc(var(--scroll-progress, 0) * 6), 1);
   position: absolute;
   top: calc(var(--scroll-progress, 0) * 100% - 2px);
   transform: translateX(-50%);
   transition: top 0.12s ease-out, opacity 0.12s ease;
-  width: 8px;
+  width: 9px;
 }
 
-/* Oil pool — appears as an ellipse blob when scroll > 70% */
+/* Oil pool — appears as an ellipse blob with realistic iridescent oil-slick sheen */
 .fs-tracker-pool {
   background: radial-gradient(
     ellipse at center,
-    rgba(34, 197, 94, 0.65) 0%,
-    rgba(22, 163, 74, 0.35) 55%,
-    transparent 80%
+    #090502 0%,                     /* deep dark petroleum center */
+    rgba(147, 51, 234, 0.9) 25%,    /* iridescent purple sheen */
+    rgba(59, 130, 246, 0.8) 50%,    /* neon blue sheen */
+    rgba(245, 158, 11, 0.6) 75%,    /* golden edge outline */
+    transparent 100%
   );
   border-radius: 50%;
-  filter: blur(3px);
+  filter: blur(1.5px);
   position: absolute;
   bottom: 0;
-  left: -8px;
-  height: 22px;
+  left: -12px;
+  height: 24px;
   opacity: clamp(0, calc((var(--scroll-progress, 0) - 0.65) * 3), 1);
   transform: scaleX(clamp(0.1, calc(0.1 + var(--scroll-progress, 0) * 1.2), 1.3));
   transform-origin: center top;
   transition: opacity 0.25s ease, transform 0.25s ease;
-  width: 76px;
+  width: 84px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
