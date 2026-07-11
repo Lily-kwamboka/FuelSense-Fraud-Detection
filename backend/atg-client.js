@@ -278,7 +278,15 @@ async function getStatusReport() {
  */
 async function fetchInventory() {
     const readings = await getInventory();
-    return { readings, parsedAt: new Date() };
+    // Convert camelCase back to snake_case for scheduler compatibility
+    const converted = readings.map(r => ({
+        tankNumber: r.tankNumber,
+        product: r.product,
+        innage_mm: r.innageMm,
+        water_mm: r.waterMm,
+        temperature_c: r.tempC,
+    }));
+    return { readings: converted, parsedAt: new Date() };
 }
 
 // ---------------------------------------------------------------------------
