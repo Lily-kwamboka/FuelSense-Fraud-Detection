@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 
-function Login() {
+// Roles that MUST complete MFA before accessing the dashboard
+const MFA_REQUIRED_ROLES = ['owner', 'headquarters'];
+
+const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -207,6 +212,9 @@ function Login() {
           <button onClick={verifyEnrollment} disabled={loading} style={btn(dark)}>
             {loading ? 'Verifying...' : 'Activate 2FA & Continue →'}
           </button>
+          <div style={{ fontSize: '11px', color: '#aaa', textAlign: 'center' }}>
+            You'll need to enter a code from your authenticator app every time you log in.
+          </div>
         </div>
       </div>
     );
@@ -242,9 +250,9 @@ function Login() {
           >
             ← Sign in with a different account
           </button>
-          <button style={styles.linkBtn} onClick={() => { setResetMode(false); setError(null); }}>
-            Back to Sign In
-          </button>
+          <div style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginTop: '4px' }}>
+            Code refreshes every 30 seconds. Make sure your device clock is correct.
+          </div>
         </div>
       </div>
     );
@@ -303,31 +311,7 @@ function Login() {
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: '#bbb' }}>
           FuelSense · Mafuta Salama · Nairobi, Kenya
         </div>
-
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: { minHeight: '100vh', background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  card: { background: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
-  logo: { fontSize: '48px', textAlign: 'center', marginBottom: '8px' },
-  title: { fontSize: '24px', fontWeight: '700', textAlign: 'center', color: '#1a1a2e', marginBottom: '4px' },
-  subtitle: { fontSize: '13px', color: '#999', textAlign: 'center', marginBottom: '16px' },
-  notice: { background: '#f0f4ff', border: '1px solid #c7d7fd', color: '#3451b2', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px', textAlign: 'center' },
-  error: { background: '#fdecea', color: '#e74c3c', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-  successBox: { background: '#eafaf1', border: '1px solid #a9dfbf', color: '#1e8449', padding: '14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', textAlign: 'center' },
-  field: { marginBottom: '16px' },
-  label: { display: 'block', fontSize: '13px', fontWeight: '500', color: '#444', marginBottom: '6px' },
-  input: { width: '100%', padding: '10px 12px', border: '1.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' },
-  btn: { width: '100%', padding: '11px', background: '#1a1a2e', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' },
-  linkBtn: { background: 'none', border: 'none', color: '#1a1a2e', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', display: 'block', margin: '0 auto' },
-  divider: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' },
-  dividerLine: { flex: 1, height: '1px', background: '#e0e0e0' },
-  dividerText: { fontSize: '12px', color: '#999' },
-  googleBtn: { width: '100%', padding: '11px', background: '#fff', color: '#444', border: '1.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' },
-  footer: { textAlign: 'center', fontSize: '11px', color: '#bbb' },
-};
-
-export default Login;
