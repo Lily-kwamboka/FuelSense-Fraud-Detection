@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
@@ -27,6 +28,10 @@ const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 function App() {
   const [session,        setSession]     = useState(null);
   const [authLoading,    setAuthLoading] = useState(true);
+  const [showPublicLogin, setShowPublicLogin] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('login') === '1';
+  });
   const [tanks,          setTanks]       = useState([]);
   const [deliveries,     setDeliveries]  = useState([]);
   const [reconciliation, setRecon]       = useState([]);
@@ -63,6 +68,7 @@ function App() {
     const orderIdParam = urlParams.get('OrderTrackingId');
     
     if (tabParam === 'payment-result') {
+      setShowPublicLogin(true);
       setActiveTab('payment-result');
       if (statusParam) {
         sessionStorage.setItem('paymentStatus', statusParam);
@@ -226,6 +232,21 @@ function App() {
     window.location.href = window.location.origin + '?signout=' + Date.now();
   }
 
+  function openPublicLogin() {
+    setShowPublicLogin(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set('login', '1');
+    window.history.pushState({}, document.title, url.pathname + url.search + url.hash);
+  }
+
+  function returnToLanding() {
+    setShowPublicLogin(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('login');
+    const query = url.searchParams.toString();
+    window.history.pushState({}, document.title, url.pathname + (query ? '?' + query : '') + url.hash);
+  }
+
   const colors = {
     bg:      darkMode ? '#0f0f1a' : '#f0f2f5',
     card:    darkMode ? '#1e1e2e' : '#ffffff',
@@ -259,7 +280,11 @@ function App() {
     );
   }
 
-  if (!session) return <Login />;
+  if (!session) {
+    return showPublicLogin
+      ? <Login onBack={returnToLanding} />
+      : <LandingPage onLoginClick={openPublicLogin} />;
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, fontFamily: 'system-ui, sans-serif' }}>
