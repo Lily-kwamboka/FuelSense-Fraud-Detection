@@ -8,6 +8,7 @@ import Suppliers from './pages/Suppliers';
 import AlertConfig from './pages/AlertConfig';
 import ReconciliationConfig from './pages/ReconciliationConfig';
 import Organizations from './pages/Organizations';
+import ATGConfig from './pages/ATGConfig';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -17,12 +18,13 @@ export { API };
 const SUPER_ADMINS = ['bernicewakarindi@gmail.com', 'berwak18@gmail.com'];
 
 const BASE_NAV = [
-  { id: 'stations',     icon: '🏪', label: 'Stations' },
-  { id: 'tanks',        icon: '🛢', label: 'Tanks' },
-  { id: 'users',        icon: '👥', label: 'Users' },
-  { id: 'suppliers',    icon: '🚚', label: 'Suppliers' },
-  { id: 'alertconfig',  icon: '🔔', label: 'Alerts' },
-  { id: 'reconconfig',  icon: '⚖️', label: 'Reconciliation' },
+  { id: 'stations', icon: '🏪', label: 'Stations' },
+  { id: 'tanks', icon: '🛢', label: 'Tanks' },
+  { id: 'users', icon: '👥', label: 'Users' },
+  { id: 'suppliers', icon: '🚚', label: 'Suppliers' },
+  { id: 'alertconfig', icon: '🔔', label: 'Alerts' },
+  { id: 'reconconfig', icon: '⚖️', label: 'Reconciliation' },
+  { id: 'atgconfig', icon: '📡', label: 'ATG / Gateway' },
 ];
 
 const SUPER_ADMIN_NAV = [
@@ -32,10 +34,10 @@ const SUPER_ADMIN_NAV = [
 const ALLOWED_ROLES = ['admin', 'owner', 'headquarters', 'station_manager'];
 
 export default function App() {
-  const [session,      setSession]      = useState(null);
-  const [authLoading,  setAuthLoading]  = useState(true);
-  const [activeTab,    setActiveTab]    = useState('stations');
-  const [userProfile,  setUserProfile]  = useState(null);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('stations');
+  const [userProfile, setUserProfile] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
@@ -204,12 +206,13 @@ export default function App() {
         </div>
 
         {activeTab === 'organizations' && isSuperAdmin && <Organizations api={API} session={session} />}
-        {activeTab === 'stations'      && <Stations              api={API} session={session} />}
-        {activeTab === 'tanks'         && <Tanks                 api={API} session={session} />}
-        {activeTab === 'users'         && <Users                 api={API} session={session} />}
-        {activeTab === 'suppliers'     && <Suppliers              api={API} session={session} />}
-        {activeTab === 'alertconfig'   && <AlertConfig            api={API} session={session} />}
-        {activeTab === 'reconconfig'   && <ReconciliationConfig   api={API} session={session} />}
+        {activeTab === 'stations' && <Stations api={API} session={session} />}
+        {activeTab === 'tanks' && <Tanks api={API} session={session} />}
+        {activeTab === 'users' && <Users api={API} session={session} />}
+        {activeTab === 'suppliers' && <Suppliers api={API} session={session} />}
+        {activeTab === 'alertconfig' && <AlertConfig api={API} session={session} />}
+        {activeTab === 'reconconfig' && <ReconciliationConfig api={API} session={session} />}
+        {activeTab === 'atgconfig' && <ATGConfig api={API} session={session} />}
       </div>
     </div>
   );
