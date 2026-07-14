@@ -18,6 +18,7 @@ import PumpVsDip from './components/PumpVsDip';
 import Pricing from './components/Pricing';
 import PaymentResult from './components/PaymentResult';
 import AccessDenied from './components/AccessDenied';
+import ResetPassword from './components/ResetPassword';
 import useIsMobile from './useIsMobile';
 import { useAuditLog } from './useAuditLog';
 import { useToast } from './Toast';
@@ -25,27 +26,32 @@ import AuditLog from './components/AuditLog';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
+// Roles that MUST be at AAL2 (MFA-verified) before any dashboard content loads.
+// Kept in sync with the same list in Login.js.
+const MFA_REQUIRED_ROLES = ['owner', 'headquarters'];
+
 function App() {
-  const [session,        setSession]     = useState(null);
-  const [authLoading,    setAuthLoading] = useState(true);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [showPublicLogin, setShowPublicLogin] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('login') === '1';
   });
-  const [tanks,          setTanks]       = useState([]);
-  const [deliveries,     setDeliveries]  = useState([]);
-  const [reconciliation, setRecon]       = useState([]);
-  const [activeTab,      setActiveTab]   = useState('dashboard');
-  const [lastUpdated,    setLastUpdated] = useState(null);
-  const [showForm,       setShowForm]    = useState(false);
-  const [darkMode,       setDarkMode]    = useState(false);
-  const [alertSummary,   setAlertSummary] = useState({ critical: 0, warning: 0, info: 0 });
-  const [subscription,   setSubscription] = useState(null);
+  const [tanks, setTanks] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [reconciliation, setRecon] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [alertSummary, setAlertSummary] = useState({ critical: 0, warning: 0, info: 0 });
+  const [subscription, setSubscription] = useState(null);
   const isMobile = useIsMobile();
   const { addToast } = useToast();
-  const [stations,       setStations]      = useState([]);
-  const [activeStation,  setActiveStation] = useState(null);
-  const [userProfile,    setUserProfile]   = useState(null);
+  const [stations, setStations] = useState([]);
+  const [activeStation, setActiveStation] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [mfaStatus, setMfaStatus] = useState('checking'); // checking | required | clear
   const { log } = useAuditLog(session, userProfile, activeStation);
 
   useEffect(() => {
@@ -66,7 +72,7 @@ function App() {
     const tabParam = urlParams.get('tab');
     const statusParam = urlParams.get('status');
     const orderIdParam = urlParams.get('OrderTrackingId');
-    
+
     if (tabParam === 'payment-result') {
       setShowPublicLogin(true);
       setActiveTab('payment-result');
@@ -181,24 +187,45 @@ function App() {
     }
   }
 
+  // ── Session gate: runs on every session change (fresh login, refresh, tab
+  // restore). Re-verifies AAL2 for owner/headquarters roles EVERY time, not
+  // just at the login form — closes the gap where a stale/restored AAL1
+  // session could reach the dashboard without ever completing MFA. ─────────
   useEffect(() => {
     if (session) {
       const init = async () => {
         const profile = await loadUserProfile();
+
+        if (profile && MFA_REQUIRED_ROLES.includes(profile.role)) {
+          try {
+            const { data: aalData, error: aalError } =
+              await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (aalError || aalData?.currentLevel !== 'aal2') {
+              setMfaStatus('required');
+              return; // stop here — do not load stations/data yet
+            }
+          } catch (err) {
+            console.error('[MFA] AAL check failed:', err.message);
+            setMfaStatus('required'); // fail closed for privileged roles
+            return;
+          }
+        }
+        setMfaStatus('clear');
+
         await loadStations(profile);
         try {
           await fetch(API + '/api/audit-log', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-              user_email:  session.user.email,
-              user_role:   profile?.role || 'unknown',
-              action:      'SIGN_IN',
+            body: JSON.stringify({
+              user_email: session.user.email,
+              user_role: profile?.role || 'unknown',
+              action: 'SIGN_IN',
               entity_type: 'auth',
-              entity_id:   null,
-              station_id:  null,
-              old_value:   null,
-              new_value:   null,
+              entity_id: null,
+              station_id: null,
+              old_value: null,
+              new_value: null,
             }),
           });
         } catch (e) {
@@ -210,12 +237,12 @@ function App() {
   }, [session]);
 
   useEffect(() => {
-    if (session && activeStation) {
+    if (session && activeStation && mfaStatus === 'clear') {
       loadData();
       const interval = setInterval(loadData, 60000);
       return () => clearInterval(interval);
     }
-  }, [session, activeStation]);
+  }, [session, activeStation, mfaStatus]);
 
   async function handleSignOut() {
     await log('SIGN_OUT', 'auth', null, null, null);
@@ -248,17 +275,17 @@ function App() {
   }
 
   const colors = {
-    bg:      darkMode ? '#0f0f1a' : '#f0f2f5',
-    card:    darkMode ? '#1e1e2e' : '#ffffff',
-    text:    darkMode ? '#e0e0e0' : '#1a1a2e',
-    subtext: darkMode ? '#888'    : '#666',
-    border:  darkMode ? '#2a2a3e' : '#e0e0e0',
+    bg: darkMode ? '#0f0f1a' : '#f0f2f5',
+    card: darkMode ? '#1e1e2e' : '#ffffff',
+    text: darkMode ? '#e0e0e0' : '#1a1a2e',
+    subtext: darkMode ? '#888' : '#666',
+    border: darkMode ? '#2a2a3e' : '#e0e0e0',
   };
 
   const mainStyle = {
-    marginLeft:    isMobile ? '0' : '220px',
-    flex:          1,
-    minHeight:     '100vh',
+    marginLeft: isMobile ? '0' : '220px',
+    flex: 1,
+    minHeight: '100vh',
     paddingBottom: isMobile ? '70px' : '0',
   };
 
@@ -267,6 +294,11 @@ function App() {
   const isExpired = subscription?.status === 'expired';
   const shouldShowContent = hasAccess || activeTab === 'pricing' || activeTab === 'payment-result';
   const shouldShowAccessDenied = isExpired && activeTab !== 'pricing' && activeTab !== 'payment-result';
+
+  // ── Reset-password route — checked first, bypasses auth/session logic ──────
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPassword />;
+  }
 
   if (authLoading) {
     return (
@@ -284,6 +316,22 @@ function App() {
     return showPublicLogin
       ? <Login onBack={returnToLanding} />
       : <LandingPage onLoginClick={openPublicLogin} />;
+  }
+
+  // ── MFA gate: session exists but hasn't been re-verified at AAL2 yet ───────
+  if (mfaStatus === 'checking') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⛽</div>
+          <div style={{ color: '#fff', fontSize: '16px', fontWeight: '500' }}>Verifying access...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mfaStatus === 'required') {
+    return <MfaGate onVerified={() => setMfaStatus('clear')} onSignOut={handleSignOut} />;
   }
 
   return (
@@ -320,16 +368,16 @@ function App() {
         <div style={{ ...styles.topBar, background: colors.card, borderBottom: `1px solid ${colors.border}` }}>
           <div>
             <div style={{ ...styles.pageTitle, color: colors.text, fontSize: isMobile ? '16px' : '18px' }}>
-              {activeTab === 'dashboard'      && '📊 Live Dashboard'}
-              {activeTab === 'deliveries'     && '🚚 Deliveries'}
+              {activeTab === 'dashboard' && '📊 Live Dashboard'}
+              {activeTab === 'deliveries' && '🚚 Deliveries'}
               {activeTab === 'reconciliation' && '📋 Reconciliation'}
-              {activeTab === 'shifts'         && '⏱ Shift Management'}
-              {activeTab === 'pump-vs-dip'    && '🔢 Pump vs Dip'}
-              {activeTab === 'alerts'         && '🔔 Alerts'}
-              {activeTab === 'audit'          && '🔍 Audit Log'}
-              {activeTab === 'pricing'        && '💳 Subscription & Billing'}
+              {activeTab === 'shifts' && '⏱ Shift Management'}
+              {activeTab === 'pump-vs-dip' && '🔢 Pump vs Dip'}
+              {activeTab === 'alerts' && '🔔 Alerts'}
+              {activeTab === 'audit' && '🔍 Audit Log'}
+              {activeTab === 'pricing' && '💳 Subscription & Billing'}
               {activeTab === 'payment-result' && '💰 Payment Result'}
-              {activeTab === 'reports'        && '📈 Reports'}
+              {activeTab === 'reports' && '📈 Reports'}
             </div>
             {!isMobile && stations.length > 1 && (
               <select
@@ -446,9 +494,9 @@ function App() {
                     gap: isMobile ? '8px' : '16px',
                     marginBottom: '24px',
                   }}>
-                    <SummaryCard label="Total NSV"    value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard label="Total NSV" value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard label="Active Tanks" value={Array.isArray(tanks) ? tanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
-                    <SummaryCard label="Deliveries"   value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard label="Deliveries" value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard
                       label="Open Alerts"
                       value={totalOpenAlerts + ' open'}
@@ -604,6 +652,82 @@ function App() {
   );
 }
 
+// ── MFA re-verification gate for restored/stale sessions ─────────────────────
+// Shown when a session exists but hasn't proven AAL2 in this browser context —
+// e.g. a hard refresh, a tab restored from a previous browser session, or any
+// future auth entry point that doesn't route through Login.js's own MFA flow.
+function MfaGate({ onVerified, onSignOut }) {
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [factorId, setFactorId] = useState('');
+  const [challengeId, setChallengeId] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const verified = (factors?.totp || []).filter(f => f.status === 'verified');
+      if (verified.length === 0) {
+        // A privileged session with no verified factor shouldn't be possible
+        // if Login.js's flow is intact — safest response is to sign out and
+        // force a clean re-login through the proper enrollment path.
+        onSignOut();
+        return;
+      }
+      const fId = verified[0].id;
+      setFactorId(fId);
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: fId });
+      if (chErr) { setError(chErr.message); return; }
+      setChallengeId(ch.id);
+      setReady(true);
+    })();
+  }, [onSignOut]);
+
+  async function verify() {
+    if (otp.length !== 6) { setError('Please enter the 6-digit code.'); return; }
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId, code: otp });
+    setLoading(false);
+    if (error) { setError('Invalid code. Please try again.'); setOtp(''); return; }
+    onVerified();
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '24px' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔑</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a2e' }}>Re-verify to continue</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
+            Your session needs a fresh two-factor check. Enter the code from your authenticator app.
+          </div>
+        </div>
+        {error && (
+          <div style={{ background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
+            ⚠️ {error}
+          </div>
+        )}
+        <input
+          type="text" inputMode="numeric" maxLength={6}
+          value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+          placeholder="000000" disabled={!ready}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', border: '1px solid #e0e0e0', borderRadius: '8px', textAlign: 'center', fontSize: '28px', letterSpacing: '10px', fontWeight: '700', marginBottom: '12px', outline: 'none' }}
+          onKeyDown={e => e.key === 'Enter' && verify()}
+          autoFocus
+        />
+        <button onClick={verify} disabled={loading || otp.length !== 6 || !ready} style={{ width: '100%', padding: '13px', border: 'none', borderRadius: '8px', background: '#1a1a2e', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginBottom: '10px' }}>
+          {loading ? 'Verifying...' : 'Verify →'}
+        </button>
+        <button onClick={onSignOut} style={{ width: '100%', padding: '13px', border: 'none', borderRadius: '8px', background: '#f0f0f0', color: '#666', fontSize: '14px', cursor: 'pointer' }}>
+          ← Sign in with a different account
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SummaryCard({ label, value, icon, color, bg, text, sub, mobile, onClick }) {
   return (
     <div
@@ -622,17 +746,17 @@ function SummaryCard({ label, value, icon, color, bg, text, sub, mobile, onClick
 }
 
 const styles = {
-  topBar:       { padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 },
-  pageTitle:    { fontSize: '18px', fontWeight: '700' },
-  refreshBtn:   { padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
-  content:      { padding: '24px' },
-  sectionHeader:{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
+  topBar: { padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 },
+  pageTitle: { fontSize: '18px', fontWeight: '700' },
+  refreshBtn: { padding: '6px 12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  content: { padding: '24px' },
+  sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
   sectionTitle: { fontSize: '15px', fontWeight: '600' },
-  rowBetween:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  newBtn:       { background: '#1a1a2e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' },
-  alertRed:     { background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '10px 14px', borderRadius: '8px', marginBottom: '10px', fontSize: '13px' },
-  alertAmber:   { background: '#fff3cd', border: '1px solid #ffc107', color: '#856404', padding: '10px 14px', borderRadius: '8px', marginBottom: '10px', fontSize: '13px' },
-  emptyState:   { borderRadius: '12px', padding: '60px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+  rowBetween: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
+  newBtn: { background: '#1a1a2e', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' },
+  alertRed: { background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '10px 14px', borderRadius: '8px', marginBottom: '10px', fontSize: '13px' },
+  alertAmber: { background: '#fff3cd', border: '1px solid #ffc107', color: '#856404', padding: '10px 14px', borderRadius: '8px', marginBottom: '10px', fontSize: '13px' },
+  emptyState: { borderRadius: '12px', padding: '60px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
 };
 
 export default App;
