@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
 // Roles that MUST complete MFA before accessing the dashboard
@@ -11,28 +11,56 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [screen, setScreen] = useState('login'); // login | mfa_enroll | mfa_challenge
+  const [screen, setScreen] = useState('login'); // login | mfa_enroll | mfa_challenge | magic_sent
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
   const [factorId, setFactorId] = useState('');
   const [challengeId, setChallengeId] = useState('');
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState('');
+  const [magicLinkEmail, setMagicLinkEmail] = useState('');
+  const [mfaCheckDone, setMfaCheckDone] = useState(false); // guards against double-firing
+
+  // ── Catch EVERY new session, regardless of how it was created ──────────────
+  // (password login, magic link, session restore) — this is what was missing.
+  // Without this, a magic-link session never ran through checkMfaRequired at all.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setMfaCheckDone(false);
+        await checkMfaRequired(session.user);
+        setMfaCheckDone(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── After any successful auth, check if MFA is needed ─────────────────────
   async function checkMfaRequired(user) {
+    let role = 'attendant';
     try {
       const profileRes = await fetch(`${API}/api/user-profile?uid=${user.id}`);
       const profile = await profileRes.json();
-      const role = profile?.role || 'attendant';
+      role = profile?.role || 'attendant';
+    } catch (err) {
+      console.error('[MFA] Profile fetch failed:', err.message);
+      // Can't confirm the role — fail CLOSED rather than risk letting a
+      // privileged account through unchecked.
+      setError('Unable to verify your account. Please try signing in again.');
+      await supabase.auth.signOut();
+      setScreen('login');
+      return true;
+    }
 
-      if (!MFA_REQUIRED_ROLES.includes(role)) {
-        // Non-privileged role — no MFA needed, dashboard loads normally
-        return false;
-      }
+    if (!MFA_REQUIRED_ROLES.includes(role)) {
+      // Non-privileged role — no MFA needed, dashboard loads normally
+      return false;
+    }
 
-      // High-privilege role — check MFA enrollment status
-      setUserId(user.id);
+    // High-privilege role — check MFA enrollment status
+    setUserId(user.id);
+    try {
       const { data: factors } = await supabase.auth.mfa.listFactors();
       const totpFactors = factors?.totp || [];
       const verified = totpFactors.filter(f => f.status === 'verified');
@@ -40,16 +68,18 @@ export default function Login() {
       if (verified.length === 0) {
         // Not enrolled — show QR code setup
         await startMfaEnrollment();
-        return true;
       } else {
         // Enrolled but needs challenge
         setFactorId(verified[0].id);
         await startMfaChallenge(verified[0].id);
-        return true;
       }
+      return true;
     } catch (err) {
-      console.error('[MFA] Check failed:', err.message);
-      return false;
+      console.error('[MFA] Setup failed:', err.message);
+      setError('Failed to start two-factor verification. Please try again.');
+      await supabase.auth.signOut();
+      setScreen('login');
+      return true;
     }
   }
 
@@ -128,14 +158,40 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setError(error.message); setLoading(false); return; }
-      const needsMfa = await checkMfaRequired(data.user);
-      if (!needsMfa) setLoading(false);
+      // MFA check now happens via the onAuthStateChange listener above —
+      // no need to call checkMfaRequired directly here anymore, it would
+      // double-fire. Just stop the loading spinner; the listener takes it
+      // from here (enrollment/challenge screen or straight to dashboard).
+      setLoading(false);
     } catch (err) {
       setError(err.message);
       setLoading(false);
     }
+  }
+
+  // ── Magic link login ────────────────────────────────────────────────────────
+  async function handleMagicLink(e) {
+    e.preventDefault();
+    if (!email) { setError('Enter your email address first.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin,
+          shouldCreateUser: false, // only works for accounts the admin already provisioned
+        },
+      });
+      if (error) { setError(error.message); setLoading(false); return; }
+      setMagicLinkEmail(email);
+      setScreen('magic_sent');
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
   }
 
   // ── Styles ─────────────────────────────────────────────────────────────────
@@ -174,6 +230,29 @@ export default function Login() {
     </div>
   ) : null;
 
+  // ── Magic link sent confirmation ────────────────────────────────────────────
+  if (screen === 'magic_sent') {
+    return (
+      <div style={card}>
+        <div style={box}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>📧</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Check your email</div>
+            <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
+              We sent a sign-in link to <strong>{magicLinkEmail}</strong>. Click it to continue — no password needed.
+            </div>
+          </div>
+          <button
+            onClick={() => { setScreen('login'); setError(''); }}
+            style={{ ...btn('#f0f0f0', '#666'), fontWeight: '400' }}
+          >
+            ← Use a different email
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── MFA Enroll Screen ──────────────────────────────────────────────────────
   if (screen === 'mfa_enroll') {
     return (
@@ -211,6 +290,12 @@ export default function Login() {
           />
           <button onClick={verifyEnrollment} disabled={loading} style={btn(dark)}>
             {loading ? 'Verifying...' : 'Activate 2FA & Continue →'}
+          </button>
+          <button
+            onClick={() => { supabase.auth.signOut(); setScreen('login'); setOtp(''); setError(''); setQrCode(''); setSecret(''); }}
+            style={{ ...btn('#f0f0f0', '#666'), fontWeight: '400' }}
+          >
+            ← Cancel and sign out
           </button>
           <div style={{ fontSize: '11px', color: '#aaa', textAlign: 'center' }}>
             You'll need to enter a code from your authenticator app every time you log in.
@@ -299,14 +384,22 @@ export default function Login() {
               redirectTo: window.location.origin + '/reset-password',
             });
             setLoading(false);
-            if (error) setError(error.message);
-            else setError('');
-            alert(`Password reset email sent to ${email}`);
+            if (error) {
+              setError(error.message);
+            } else {
+              setError('');
+              alert(`Password reset email sent to ${email}`);
+            }
           }} style={{ fontSize: '13px', color: dark, textDecoration: 'underline' }}>
             Forgot your password?
           </a>
         </div>
 
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <a href="#magiclink" onClick={handleMagicLink} style={{ fontSize: '13px', color: dark, textDecoration: 'underline' }}>
+            Sign in with an email link instead
+          </a>
+        </div>
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: '#bbb' }}>
           FuelSense · Mafuta Salama · Nairobi, Kenya
