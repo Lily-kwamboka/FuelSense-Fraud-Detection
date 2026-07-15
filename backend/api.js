@@ -769,7 +769,7 @@ app.get('/api/payments/history', async (req, res) => {
   }
 });
 
-// ── Health check ──────────────────────────────────────────────────────────
+// ── Health check ──────────────────────────────────────────────────────────                 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -868,6 +868,344 @@ setTimeout(async () => {
     console.log('[scheduler] Started inside API process ✓');
   } catch (err) {
     console.error('[scheduler] Failed to start:', err.message);
+  }
+}, 3000);
+
+// ── ADMIN ROUTES ──────────────────────────────────────────────────────────
+
+app.get('/api/admin/stations', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT s.*, COUNT(t.id)::text AS tank_count FROM stations s LEFT JOIN tanks t ON t.station_id = s.id GROUP BY s.id ORDER BY s.name`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/stations', async (req, res) => {
+  const { name, location, timezone } = req.body;
+  if (!name) return res.status(400).json({ error: 'Station name is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(`INSERT INTO stations (id, name, location, timezone) VALUES (gen_random_uuid(), $1, $2, $3) RETURNING *`, [name, location || null, timezone || 'Africa/Nairobi']);
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/stations/:id', async (req, res) => {
+  const { name, location, timezone } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(`UPDATE stations SET name=$1, location=$2, timezone=$3 WHERE id=$4 RETURNING *`, [name, location || null, timezone || 'Africa/Nairobi', req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Station not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/stations/:id', async (req, res) => {
+  try {
+    const client = await getDb();
+    await client.query(`DELETE FROM stations WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/tanks', async (req, res) => {
+  try {
+    const client = await getDb();
+    const stationId = req.query.station_id;
+    let query = `SELECT t.*, s.name AS station_name FROM tanks t JOIN stations s ON s.id = t.station_id`;
+    const params = [];
+    if (stationId) { params.push(stationId); query += ` WHERE t.station_id = $1`; }
+    query += ` ORDER BY s.name, t.tank_number`;
+    const result = await client.query(query, params);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/tanks', async (req, res) => {
+  const { station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id } = req.body;
+  if (!station_id || !tank_number || !fuel_type || !capacity_litres) return res.status(400).json({ error: 'Missing required fields' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO tanks (id, station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c || 0.835, low_stock_threshold_pct || 20, deadwood_litres || 0, atg_probe_id || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/tanks/:id', async (req, res) => {
+  const { station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres, atg_probe_id } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `UPDATE tanks SET station_id=$1, tank_number=$2, fuel_type=$3, capacity_litres=$4, fuel_density_at_15c=$5, low_stock_threshold_pct=$6, deadwood_litres=$7, atg_probe_id=$8 WHERE id=$9 RETURNING *`,
+      [station_id, tank_number, fuel_type, capacity_litres, fuel_density_at_15c, low_stock_threshold_pct, deadwood_litres || 0, atg_probe_id || null, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Tank not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/tanks/:id', async (req, res) => {
+  try {
+    const client = await getDb();
+    await client.query(`DELETE FROM tanks WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT u.*, s.name AS station_name FROM user_profiles u LEFT JOIN stations s ON s.id = u.station_id ORDER BY u.email`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/users', async (req, res) => {
+  const { supabase_uid, email, full_name, role, station_id } = req.body;
+  if (!supabase_uid || !email) return res.status(400).json({ error: 'supabase_uid and email are required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(`INSERT INTO user_profiles (supabase_uid, email, full_name, role, station_id) VALUES ($1,$2,$3,$4,$5) RETURNING *`, [supabase_uid, email, full_name || null, role || 'attendant', station_id || null]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/users/:id', async (req, res) => {
+  const { email, full_name, role, station_id } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(`UPDATE user_profiles SET email=$1, full_name=$2, role=$3, station_id=$4 WHERE id=$5 RETURNING *`, [email, full_name || null, role, station_id || null, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/users/:id', async (req, res) => {
+  try {
+    const client = await getDb();
+    await client.query(`DELETE FROM user_profiles WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/suppliers', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM suppliers ORDER BY name`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/suppliers', async (req, res) => {
+  const { name, contact_name, phone, email, address, tolerance_pct } = req.body;
+  if (!name) return res.status(400).json({ error: 'Supplier name is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(`INSERT INTO suppliers (id, name, contact_name, phone, email, address, is_active, tolerance_pct) VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,true,$6) RETURNING *`, [name, contact_name || null, phone || null, email || null, address || null, tolerance_pct || 0.25]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/suppliers/:id', async (req, res) => {
+  const { name, contact_name, phone, email, address, is_active, tolerance_pct } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(`UPDATE suppliers SET name=$1, contact_name=$2, phone=$3, email=$4, address=$5, is_active=$6, tolerance_pct=$7 WHERE id=$8 RETURNING *`, [name, contact_name || null, phone || null, email || null, address || null, is_active !== undefined ? is_active : true, tolerance_pct || 0.25, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Supplier not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/suppliers/:id', async (req, res) => {
+  try {
+    const client = await getDb();
+    await client.query(`DELETE FROM suppliers WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/alert-config/:stationId', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM alert_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) {
+      return res.json({ station_id: req.params.stationId, low_stock_threshold_pct: 20, high_water_mm: 50, reading_gap_minutes: 5, stabilisation_timeout_hours: 14, delivery_variance_tolerance_pct: 0.25, notify_email: '', notify_phone: '', notify_on_low_stock: true, notify_on_high_water: true, notify_on_reading_gap: true, notify_on_delivery_flagged: true });
+    }
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/alert-config', async (req, res) => {
+  const { station_id, low_stock_threshold_pct, high_water_mm, reading_gap_minutes, stabilisation_timeout_hours, delivery_variance_tolerance_pct, notify_email, notify_phone, notify_on_low_stock, notify_on_high_water, notify_on_reading_gap, notify_on_delivery_flagged } = req.body;
+  if (!station_id) return res.status(400).json({ error: 'station_id is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO alert_config (station_id, low_stock_threshold_pct, high_water_mm, reading_gap_minutes, stabilisation_timeout_hours, delivery_variance_tolerance_pct, notify_email, notify_phone, notify_on_low_stock, notify_on_high_water, notify_on_reading_gap, notify_on_delivery_flagged, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+       ON CONFLICT (station_id) DO UPDATE SET low_stock_threshold_pct=EXCLUDED.low_stock_threshold_pct, high_water_mm=EXCLUDED.high_water_mm, reading_gap_minutes=EXCLUDED.reading_gap_minutes, stabilisation_timeout_hours=EXCLUDED.stabilisation_timeout_hours, delivery_variance_tolerance_pct=EXCLUDED.delivery_variance_tolerance_pct, notify_email=EXCLUDED.notify_email, notify_phone=EXCLUDED.notify_phone, notify_on_low_stock=EXCLUDED.notify_on_low_stock, notify_on_high_water=EXCLUDED.notify_on_high_water, notify_on_reading_gap=EXCLUDED.notify_on_reading_gap, notify_on_delivery_flagged=EXCLUDED.notify_on_delivery_flagged, updated_at=NOW()
+       RETURNING *`,
+      [station_id, low_stock_threshold_pct ?? 20, high_water_mm ?? 50, reading_gap_minutes ?? 5, stabilisation_timeout_hours ?? 14, delivery_variance_tolerance_pct ?? 0.25, notify_email || null, notify_phone || null, notify_on_low_stock ?? true, notify_on_high_water ?? true, notify_on_reading_gap ?? true, notify_on_delivery_flagged ?? true]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/reconciliation-config/:stationId', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM reconciliation_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) {
+      return res.json({ station_id: req.params.stationId, default_tolerance_pct: 0.25, stabilisation_std_dev_threshold: 0.3, delivery_detection_threshold_mm: 50, atg_polling_interval_seconds: 60, stabilisation_timeout_hours: 14 });
+    }
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/reconciliation-config', async (req, res) => {
+  const { station_id, default_tolerance_pct, stabilisation_std_dev_threshold, delivery_detection_threshold_mm, atg_polling_interval_seconds, stabilisation_timeout_hours } = req.body;
+  if (!station_id) return res.status(400).json({ error: 'station_id is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO reconciliation_config (station_id, default_tolerance_pct, stabilisation_std_dev_threshold, delivery_detection_threshold_mm, atg_polling_interval_seconds, stabilisation_timeout_hours, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())
+       ON CONFLICT (station_id) DO UPDATE SET default_tolerance_pct=EXCLUDED.default_tolerance_pct, stabilisation_std_dev_threshold=EXCLUDED.stabilisation_std_dev_threshold, delivery_detection_threshold_mm=EXCLUDED.delivery_detection_threshold_mm, atg_polling_interval_seconds=EXCLUDED.atg_polling_interval_seconds, stabilisation_timeout_hours=EXCLUDED.stabilisation_timeout_hours, updated_at=NOW()
+       RETURNING *`,
+      [station_id, default_tolerance_pct ?? 0.25, stabilisation_std_dev_threshold ?? 0.3, delivery_detection_threshold_mm ?? 50, atg_polling_interval_seconds ?? 60, stabilisation_timeout_hours ?? 14]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/atg-config/:stationId', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM atg_gateway_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) {
+      return res.json({ station_id: req.params.stationId, gateway_ip: '', gateway_port: 10001, connection_timeout_ms: 5000, console_type: 'veeder_root_tls', is_active: true, last_connected_at: null, last_error: null });
+    }
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/atg-config', async (req, res) => {
+  const { station_id, gateway_ip, gateway_port, connection_timeout_ms, console_type, is_active } = req.body;
+  if (!station_id) return res.status(400).json({ error: 'station_id is required' });
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `INSERT INTO atg_gateway_config (station_id, gateway_ip, gateway_port, connection_timeout_ms, console_type, is_active, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())
+       ON CONFLICT (station_id) DO UPDATE SET gateway_ip=EXCLUDED.gateway_ip, gateway_port=EXCLUDED.gateway_port, connection_timeout_ms=EXCLUDED.connection_timeout_ms, console_type=EXCLUDED.console_type, is_active=EXCLUDED.is_active, updated_at=NOW()
+       RETURNING *`,
+      [station_id, gateway_ip || null, gateway_port || 10001, connection_timeout_ms || 5000, console_type || 'veeder_root_tls', is_active !== undefined ? is_active : true]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/atg-config/:stationId/test', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM atg_gateway_config WHERE station_id = $1`, [req.params.stationId]);
+    if (!result.rows.length) return res.status(404).json({ error: 'No gateway config found for this station' });
+    const config = result.rows[0];
+    if (!config.gateway_ip) return res.status(400).json({ error: 'No gateway IP configured' });
+    const net = require('net');
+    const socket = new net.Socket();
+    let connected = false;
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      client.query(`UPDATE atg_gateway_config SET last_error=$1, updated_at=NOW() WHERE station_id=$2`, [`Connection timeout after ${config.connection_timeout_ms}ms`, req.params.stationId]);
+      res.json({ success: false, message: `Connection timeout after ${config.connection_timeout_ms}ms`, ip: config.gateway_ip, port: config.gateway_port });
+    }, config.connection_timeout_ms || 5000);
+    socket.on('connect', () => {
+      connected = true;
+      clearTimeout(timeout);
+      socket.destroy();
+      client.query(`UPDATE atg_gateway_config SET last_connected_at=NOW(), last_error=NULL, updated_at=NOW() WHERE station_id=$1`, [req.params.stationId]);
+      res.json({ success: true, message: `Successfully connected to ${config.gateway_ip}:${config.gateway_port}`, ip: config.gateway_ip, port: config.gateway_port });
+    });
+    socket.on('error', (err) => {
+      if (connected) return;
+      clearTimeout(timeout);
+      socket.destroy();
+      client.query(`UPDATE atg_gateway_config SET last_error=$1, updated_at=NOW() WHERE station_id=$2`, [err.message, req.params.stationId]);
+      res.json({ success: false, message: err.message, ip: config.gateway_ip, port: config.gateway_port });
+    });
+    socket.connect(config.gateway_port || 10001, config.gateway_ip);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Strapping upload ──────────────────────────────────────────────────────
+const multer = require('multer');
+const csvParser = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir });
+
+app.post('/api/tanks/:tankId/strapping-upload', upload.single('file'), async (req, res) => {
+  const { tankId } = req.params;
+  const rows = [];
+  try {
+    const client = await getDb();
+    const tank = await client.query('SELECT id FROM tanks WHERE id = $1', [tankId]);
+    if (!tank.rows.length) return res.status(404).json({ error: 'Tank not found' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(req.file.path)
+        .pipe(csvParser())
+        .on('data', (row) => {
+          const depth = parseInt(row.depth_mm || row.Depth_mm || row.depth);
+          const volume = parseFloat(row.volume_litres || row.Volume_litres || row.litres);
+          if (!isNaN(depth) && !isNaN(volume)) rows.push({ depth_mm: depth, volume_litres: volume });
+        })
+        .on('end', resolve)
+        .on('error', reject);
+    });
+    if (rows.length === 0) return res.status(400).json({ error: 'No valid rows found. CSV must have columns: depth_mm, volume_litres' });
+    await client.query('DELETE FROM strapping_table_entries WHERE tank_id = $1', [tankId]);
+    await client.query('BEGIN');
+    try {
+      for (const row of rows) {
+        await client.query(`INSERT INTO strapping_table_entries (id, tank_id, depth_mm, volume_litres) VALUES (gen_random_uuid(), $1, $2, $3)`, [tankId, row.depth_mm, row.volume_litres]);
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    }
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.json({ ok: true, tank_id: tankId, rows_inserted: rows.length, message: `Successfully uploaded ${rows.length} calibration rows` });
+  } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Start scheduler ───────────────────────────────────────────────────────
+if (process.env.USE_ATG_SIMULATOR === 'true') {
+  try {
+    require('./atg-simulator');
+    console.log('[API] ATG simulator started on port 10001 ✓');
+  } catch (err) {
+    console.error('[API] Failed to start ATG simulator:', err.message);
+  }
+}
+
+setTimeout(() => {
+  try {
+    require('./scheduler');
+    console.log('[API] Scheduler started ✓');
+  } catch (err) {
+    console.error('[API] Failed to start scheduler:', err.message);
   }
 }, 3000);
 
