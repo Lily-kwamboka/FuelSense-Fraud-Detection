@@ -27,7 +27,6 @@ import AuditLog from './components/AuditLog';
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // Roles that MUST be at AAL2 (MFA-verified) before any dashboard content loads.
-// Kept in sync with the same list in Login.js.
 const MFA_REQUIRED_ROLES = ['owner', 'headquarters'];
 
 function App() {
@@ -62,6 +61,10 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setAuthLoading(false);
+      // A fresh sign-in (password or magic link) should always re-run the MFA
+      // check from scratch, even if this browser already had mfaStatus set
+      // from an earlier session.
+      setMfaStatus('checking');
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -106,7 +109,6 @@ function App() {
     }
   }, [subscription, activeStation, addToast, activeTab]);
 
-  // Check if station has access to features
   const hasStationAccess = () => {
     if (!subscription) return true;
     if (subscription.status === 'active') return true;
@@ -115,7 +117,6 @@ function App() {
     return true;
   };
 
-  // Get current station name
   const getCurrentStationName = () => {
     const station = stations.find(s => s.id === activeStation);
     return station?.name || 'Unknown Station';
@@ -187,10 +188,8 @@ function App() {
     }
   }
 
-  // ── Session gate: runs on every session change (fresh login, refresh, tab
-  // restore). Re-verifies AAL2 for owner/headquarters roles EVERY time, not
-  // just at the login form — closes the gap where a stale/restored AAL1
-  // session could reach the dashboard without ever completing MFA. ─────────
+  // ── Session gate: runs on every session change. Re-verifies AAL2 for
+  // owner/headquarters roles EVERY time — fresh login, refresh, tab restore.
   useEffect(() => {
     if (session) {
       const init = async () => {
@@ -202,7 +201,7 @@ function App() {
               await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
             if (aalError || aalData?.currentLevel !== 'aal2') {
               setMfaStatus('required');
-              return; // stop here — do not load stations/data yet
+              return; // stop — MfaGate takes over, no dashboard data loads yet
             }
           } catch (err) {
             console.error('[MFA] AAL check failed:', err.message);
@@ -295,7 +294,6 @@ function App() {
   const shouldShowContent = hasAccess || activeTab === 'pricing' || activeTab === 'payment-result';
   const shouldShowAccessDenied = isExpired && activeTab !== 'pricing' && activeTab !== 'payment-result';
 
-  // ── Reset-password route — checked first, bypasses auth/session logic ──────
   if (window.location.pathname === '/reset-password') {
     return <ResetPassword />;
   }
@@ -318,7 +316,6 @@ function App() {
       : <LandingPage onLoginClick={openPublicLogin} />;
   }
 
-  // ── MFA gate: session exists but hasn't been re-verified at AAL2 yet ───────
   if (mfaStatus === 'checking') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e' }}>
@@ -337,7 +334,6 @@ function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, fontFamily: 'system-ui, sans-serif' }}>
 
-      {/* Sidebar — desktop only */}
       {!isMobile && (
         <Sidebar
           activeTab={activeTab}
@@ -351,7 +347,6 @@ function App() {
         />
       )}
 
-      {/* Bottom nav — mobile only */}
       {isMobile && (
         <BottomNav
           activeTab={activeTab}
@@ -361,10 +356,8 @@ function App() {
         />
       )}
 
-      {/* Main content */}
       <div style={mainStyle}>
 
-        {/* Top bar */}
         <div style={{ ...styles.topBar, background: colors.card, borderBottom: `1px solid ${colors.border}` }}>
           <div>
             <div style={{ ...styles.pageTitle, color: colors.text, fontSize: isMobile ? '16px' : '18px' }}>
@@ -406,14 +399,7 @@ function App() {
               </button>
             )}
             {isExpired && (
-              <span style={{
-                fontSize: '11px',
-                padding: '2px 8px',
-                borderRadius: '99px',
-                background: '#fdecea',
-                color: '#e74c3c',
-                fontWeight: '600',
-              }}>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '99px', background: '#fdecea', color: '#e74c3c', fontWeight: '600' }}>
                 ⚠️ EXPIRED
               </span>
             )}
@@ -423,46 +409,29 @@ function App() {
               </div>
             )}
             {userProfile && (
-              <span style={{
-                fontSize: '11px',
-                padding: '2px 8px',
-                borderRadius: '99px',
-                background: userProfile.role === 'admin' ? '#e8f4fd' : '#eafaf1',
-                color: userProfile.role === 'admin' ? '#1a5276' : '#1e8449',
-                fontWeight: '600',
-              }}>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '99px', background: userProfile.role === 'admin' ? '#e8f4fd' : '#eafaf1', color: userProfile.role === 'admin' ? '#1a5276' : '#1e8449', fontWeight: '600' }}>
                 {userProfile.role?.toUpperCase()}
               </span>
             )}
-            <button
-              style={{ ...styles.refreshBtn, background: darkMode ? '#2a2a3e' : '#f0f2f5', color: colors.text }}
-              onClick={loadData}
-            >
+            <button style={{ ...styles.refreshBtn, background: darkMode ? '#2a2a3e' : '#f0f2f5', color: colors.text }} onClick={loadData}>
               ↻
             </button>
             {isMobile && (
-              <button
-                style={{ ...styles.refreshBtn, background: darkMode ? '#2a2a3e' : '#f0f2f5', color: colors.text }}
-                onClick={handleSignOut}
-              >
+              <button style={{ ...styles.refreshBtn, background: darkMode ? '#2a2a3e' : '#f0f2f5', color: colors.text }} onClick={handleSignOut}>
                 ⏻
               </button>
             )}
           </div>
         </div>
 
-        {/* Page content */}
         <div style={{ ...styles.content, padding: isMobile ? '12px' : '24px' }}>
 
-          {/* Show Access Denied for expired stations (except on pricing/payment pages) */}
           {shouldShowAccessDenied && (
             <AccessDenied darkMode={darkMode} stationName={getCurrentStationName()} />
           )}
 
-          {/* Normal content - only show if not expired OR on allowed pages */}
           {shouldShowContent && !shouldShowAccessDenied && (
             <>
-              {/* ── DASHBOARD ── */}
               {activeTab === 'dashboard' && (
                 <div>
                   {alertSummary.critical > 0 && (
@@ -488,12 +457,7 @@ function App() {
                     </div>
                   ))}
 
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                    gap: isMobile ? '8px' : '16px',
-                    marginBottom: '24px',
-                  }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '8px' : '16px', marginBottom: '24px' }}>
                     <SummaryCard label="Total NSV" value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard label="Active Tanks" value={Array.isArray(tanks) ? tanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard label="Deliveries" value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
@@ -510,11 +474,7 @@ function App() {
                   <div style={{ ...styles.sectionHeader }}>
                     <div style={{ ...styles.sectionTitle, color: colors.text }}>Live Tank Levels</div>
                   </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '16px',
-                  }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
                     {Array.isArray(tanks) && tanks.map(tank => (
                       <TankGauge key={tank.id} tank={tank} darkMode={darkMode} />
                     ))}
@@ -535,7 +495,6 @@ function App() {
                 </div>
               )}
 
-              {/* ── DELIVERIES ── */}
               {activeTab === 'deliveries' && (
                 <div>
                   <div style={styles.rowBetween}>
@@ -583,7 +542,6 @@ function App() {
                 </div>
               )}
 
-              {/* ── RECONCILIATION ── */}
               {activeTab === 'reconciliation' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>Daily Reconciliation</div>
@@ -592,20 +550,15 @@ function App() {
                 </div>
               )}
 
-
-              {/* ── SHIFTS ── */}
               {activeTab === 'shifts' && (
                 <ShiftManager tanks={tanks} darkMode={darkMode} stationId={activeStation} />
               )}
-              {/* ── PUMP VS DIP ── */}
               {activeTab === 'pump-vs-dip' && (
                 <PumpVsDip darkMode={darkMode} stationId={activeStation} />
               )}
-              {/* ── ALERTS ── */}
               {activeTab === 'alerts' && (
                 <AlertsPanel darkMode={darkMode} stationId={activeStation} />
               )}
-              {/* ── AUDIT LOG ── */}
               {activeTab === 'audit' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>🔍 Audit Log</div>
@@ -613,35 +566,21 @@ function App() {
                 </div>
               )}
 
-              {/* ── PRICING ── */}
               {activeTab === 'pricing' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>💳 Subscription & Billing</div>
-                  <Pricing
-                    api={API}
-                    activeStation={activeStation}
-                    session={session}
-                    darkMode={darkMode}
-                  />
+                  <Pricing api={API} activeStation={activeStation} session={session} darkMode={darkMode} />
                 </div>
               )}
 
-              {/* ── PAYMENT RESULT ── */}
               {activeTab === 'payment-result' && (
                 <PaymentResult darkMode={darkMode} />
               )}
 
-              {/* ── REPORTS ── */}
               {activeTab === 'reports' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>📈 Reports & Exports</div>
-                  <Reports
-                    deliveries={deliveries}
-                    reconciliation={reconciliation}
-                    tanks={tanks}
-                    darkMode={darkMode}
-                    stationId={activeStation}
-                  />
+                  <Reports deliveries={deliveries} reconciliation={reconciliation} tanks={tanks} darkMode={darkMode} stationId={activeStation} />
                 </div>
               )}
             </>
@@ -652,39 +591,50 @@ function App() {
   );
 }
 
-// ── MFA re-verification gate for restored/stale sessions ─────────────────────
-// Shown when a session exists but hasn't proven AAL2 in this browser context —
-// e.g. a hard refresh, a tab restored from a previous browser session, or any
-// future auth entry point that doesn't route through Login.js's own MFA flow.
+// ── Unified MFA gate: handles BOTH first-time enrollment (QR code) AND
+// challenge (existing factor) AND re-verification of restored/stale sessions.
+// This is the single place MFA is handled post-authentication — Login.js only
+// starts the sign-in, this component owns everything after. ──────────────────
 function MfaGate({ onVerified, onSignOut }) {
+  const [mode, setMode] = useState('loading'); // loading | enroll | challenge
+  const [qrCode, setQrCode] = useState('');
+  const [secret, setSecret] = useState('');
+  const [factorId, setFactorId] = useState('');
+  const [challengeId, setChallengeId] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [factorId, setFactorId] = useState('');
-  const [challengeId, setChallengeId] = useState('');
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data: factors } = await supabase.auth.mfa.listFactors();
       const verified = (factors?.totp || []).filter(f => f.status === 'verified');
+
       if (verified.length === 0) {
-        // A privileged session with no verified factor shouldn't be possible
-        // if Login.js's flow is intact — safest response is to sign out and
-        // force a clean re-login through the proper enrollment path.
-        onSignOut();
+        // No verified factor yet — start enrollment instead of signing out.
+        const { data, error: enrollErr } = await supabase.auth.mfa.enroll({
+          factorType: 'totp',
+          friendlyName: 'FuelSense Authenticator',
+        });
+        if (enrollErr) { setError('Failed to set up MFA: ' + enrollErr.message); return; }
+        setFactorId(data.id);
+        setQrCode(data.totp.qr_code);
+        setSecret(data.totp.secret);
+        setMode('enroll');
         return;
       }
+
+      // Existing verified factor — challenge it.
       const fId = verified[0].id;
       setFactorId(fId);
       const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: fId });
       if (chErr) { setError(chErr.message); return; }
       setChallengeId(ch.id);
-      setReady(true);
+      setMode('challenge');
     })();
-  }, [onSignOut]);
+  }, []);
 
-  async function verify() {
+  async function verifyChallenge() {
     if (otp.length !== 6) { setError('Please enter the 6-digit code.'); return; }
     setLoading(true);
     setError('');
@@ -694,33 +644,118 @@ function MfaGate({ onVerified, onSignOut }) {
     onVerified();
   }
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '24px' }}>
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔑</div>
-          <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a2e' }}>Re-verify to continue</div>
-          <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
-            Your session needs a fresh two-factor check. Enter the code from your authenticator app.
+  async function verifyEnrollment() {
+    if (otp.length !== 6) { setError('Please enter the 6-digit code.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId });
+      if (chErr) { setError(chErr.message); setLoading(false); return; }
+      const { error: verErr } = await supabase.auth.mfa.verify({ factorId, challengeId: ch.id, code: otp });
+      if (verErr) {
+        setError('Code incorrect. Make sure you scanned the QR code and try again.');
+        setOtp('');
+        setLoading(false);
+        return;
+      }
+      onVerified();
+    } catch (err) {
+      setError('Setup failed: ' + err.message);
+      setLoading(false);
+    }
+  }
+
+  const dark = '#1a1a2e';
+  const card = { minHeight: '100vh', background: '#0f0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '24px' };
+  const box = { background: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' };
+  const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '12px 14px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', outline: 'none', marginBottom: '12px' };
+  const btn = (bg = dark, color = '#fff') => ({ width: '100%', padding: '13px', border: 'none', borderRadius: '8px', background: bg, color, fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginBottom: '10px' });
+  const errBox = error ? (
+    <div style={{ background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
+      ⚠️ {error}
+    </div>
+  ) : null;
+
+  if (mode === 'loading') {
+    return (
+      <div style={card}>
+        <div style={box}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔐</div>
+            <div style={{ fontSize: '16px', fontWeight: '600', color: dark }}>Setting up security check...</div>
           </div>
         </div>
-        {error && (
-          <div style={{ background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' }}>
-            ⚠️ {error}
+      </div>
+    );
+  }
+
+  if (mode === 'enroll') {
+    return (
+      <div style={card}>
+        <div style={box}>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔐</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Set Up Two-Factor Authentication</div>
+            <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
+              Your account has owner-level access. Scan this QR code with <strong>Google Authenticator</strong> or <strong>Authy</strong> to secure your account.
+            </div>
           </div>
-        )}
+          {errBox}
+          {qrCode && (
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <img src={qrCode} alt="MFA QR Code" style={{ width: '180px', height: '180px', border: '4px solid #f0f0f0', borderRadius: '12px' }} />
+              <div style={{ fontSize: '11px', color: '#999', marginTop: '8px' }}>Can't scan? Enter this code manually:</div>
+              <div style={{ fontSize: '12px', fontFamily: 'monospace', background: '#f8f8f8', padding: '8px 12px', borderRadius: '6px', marginTop: '4px', letterSpacing: '2px', color: dark, fontWeight: '600' }}>
+                {secret}
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px', textAlign: 'center' }}>
+            After scanning, enter the 6-digit code shown in your app:
+          </div>
+          <input
+            type="text" inputMode="numeric" maxLength={6}
+            value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+            placeholder="000000"
+            style={{ ...inputStyle, textAlign: 'center', fontSize: '24px', letterSpacing: '8px', fontWeight: '700' }}
+            onKeyDown={e => e.key === 'Enter' && verifyEnrollment()}
+            autoFocus
+          />
+          <button onClick={verifyEnrollment} disabled={loading} style={btn(dark)}>
+            {loading ? 'Verifying...' : 'Activate 2FA & Continue →'}
+          </button>
+          <button onClick={onSignOut} style={{ ...btn('#f0f0f0', '#666'), fontWeight: '400' }}>
+            ← Cancel and sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // mode === 'challenge'
+  return (
+    <div style={card}>
+      <div style={box}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔑</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Two-Factor Verification</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
+            Open your authenticator app and enter the 6-digit code for FuelSense.
+          </div>
+        </div>
+        {errBox}
         <input
           type="text" inputMode="numeric" maxLength={6}
           value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-          placeholder="000000" disabled={!ready}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', border: '1px solid #e0e0e0', borderRadius: '8px', textAlign: 'center', fontSize: '28px', letterSpacing: '10px', fontWeight: '700', marginBottom: '12px', outline: 'none' }}
-          onKeyDown={e => e.key === 'Enter' && verify()}
+          placeholder="000000"
+          style={{ ...inputStyle, textAlign: 'center', fontSize: '28px', letterSpacing: '10px', fontWeight: '700' }}
+          onKeyDown={e => e.key === 'Enter' && verifyChallenge()}
           autoFocus
         />
-        <button onClick={verify} disabled={loading || otp.length !== 6 || !ready} style={{ width: '100%', padding: '13px', border: 'none', borderRadius: '8px', background: '#1a1a2e', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginBottom: '10px' }}>
-          {loading ? 'Verifying...' : 'Verify →'}
+        <button onClick={verifyChallenge} disabled={loading || otp.length !== 6} style={btn(dark)}>
+          {loading ? 'Verifying...' : 'Verify & Enter Dashboard →'}
         </button>
-        <button onClick={onSignOut} style={{ width: '100%', padding: '13px', border: 'none', borderRadius: '8px', background: '#f0f0f0', color: '#666', fontSize: '14px', cursor: 'pointer' }}>
+        <button onClick={onSignOut} style={{ ...btn('#f0f0f0', '#666'), fontWeight: '400' }}>
           ← Sign in with a different account
         </button>
       </div>
@@ -730,10 +765,7 @@ function MfaGate({ onVerified, onSignOut }) {
 
 function SummaryCard({ label, value, icon, color, bg, text, sub, mobile, onClick }) {
   return (
-    <div
-      onClick={onClick}
-      style={{ background: bg, borderRadius: '12px', padding: mobile ? '14px' : '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: onClick ? 'pointer' : 'default' }}
-    >
+    <div onClick={onClick} style={{ background: bg, borderRadius: '12px', padding: mobile ? '14px' : '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: onClick ? 'pointer' : 'default' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: mobile ? '11px' : '13px', color: sub, marginBottom: '6px' }}>{label}</div>
