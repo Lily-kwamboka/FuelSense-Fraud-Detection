@@ -15,7 +15,6 @@ console.log('[PESAPAL] Environment:', IS_SANDBOX ? 'SANDBOX' : 'LIVE', '| Base U
 let cachedToken = null;
 let tokenExpiry = null;
 
-// ── Get OAuth Token ──────────────────────────────────────────
 async function getToken() {
   if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
     return cachedToken;
@@ -40,12 +39,11 @@ async function getToken() {
   }
 
   cachedToken = data.token;
-  tokenExpiry = Date.now() + (4 * 60 * 60 * 1000); // 4 hours
+  tokenExpiry = Date.now() + (4 * 60 * 60 * 1000);
   console.log('[PESAPAL] Token obtained successfully');
   return cachedToken;
 }
 
-// ── Register IPN ─────────────────────────────────────────────
 async function registerIPN(callbackUrl) {
   const token = await getToken();
 
@@ -69,7 +67,6 @@ async function registerIPN(callbackUrl) {
   return data.ipn_id;
 }
 
-// ── Submit Order ─────────────────────────────────────────────
 async function submitOrder(order) {
   const token = await getToken();
   console.log('[PESAPAL] Submitting order:', JSON.stringify(order));
@@ -120,7 +117,6 @@ async function submitOrder(order) {
   }
 }
 
-// ── Get Transaction Status ───────────────────────────────────
 async function getTransactionStatus(orderTrackingId) {
   const token = await getToken();
 

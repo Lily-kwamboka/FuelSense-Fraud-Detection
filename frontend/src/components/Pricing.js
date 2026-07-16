@@ -29,10 +29,8 @@ function Pricing({ api, activeStation, session, darkMode }) {
     }
   }, [api, activeStation]);
 
-  // ── STEP 1 & 2: Updated handleSubscribe with idempotency key and loading guard ──
   async function handleSubscribe(plan) {
-    // STEP 2: Defense in depth — prevent rapid double-clicks
-    if (loading) return;
+    if (loading) return; // already mid-checkout, ignore repeat clicks
 
     if (plan.name?.toLowerCase().includes('enterprise')) {
       setContactForm(f => ({ ...f, email: session?.user?.email || '' }));
@@ -45,7 +43,10 @@ function Pricing({ api, activeStation, session, darkMode }) {
     setSelected(plan.id);
     setError(null);
     try {
-      // STEP 1: Generate a fresh idempotency key for this checkout attempt
+      // Generated fresh for THIS checkout attempt. The server-side unique
+      // constraint on idempotency_key is what actually prevents duplicate
+      // Pesapal orders — this key is what makes that constraint meaningful
+      // per attempt (a double-click, a slow-network retry, etc.).
       const idempotencyKey =
         (window.crypto && window.crypto.randomUUID)
           ? window.crypto.randomUUID()

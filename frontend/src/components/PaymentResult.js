@@ -21,7 +21,6 @@ function PaymentResult({ darkMode }) {
     sessionStorage.removeItem('orderTrackingId');
 
     if (!orderTrackingId) {
-      // No way to check real status — don't claim success/failure we can't verify
       setStatus('failed');
       return;
     }
@@ -46,7 +45,6 @@ function PaymentResult({ darkMode }) {
           setStatus('still_processing');
           clearInterval(poll);
         }
-        // otherwise still pending — keep polling silently
       } catch (err) {
         console.error('[PaymentResult] Status poll failed:', err);
         if (attempts >= maxAttempts) {
@@ -56,15 +54,12 @@ function PaymentResult({ darkMode }) {
       }
     }
 
-    checkStatus(); // immediate first check, don't wait 3s for the first poll
+    checkStatus();
     poll = setInterval(checkStatus, 3000);
 
     return () => clearInterval(poll);
   }, []);
 
-  // Auto-redirect countdown only runs once we have a DEFINITIVE outcome —
-  // never while still genuinely processing, so a lagging payment never gets
-  // silently bounced away from its own status page.
   useEffect(() => {
     if (status !== 'success' && status !== 'failed') return;
 
