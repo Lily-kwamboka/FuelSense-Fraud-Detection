@@ -24,6 +24,8 @@ import { useAuditLog } from './useAuditLog';
 import { useToast } from './Toast';
 import AuditLog from './components/AuditLog';
 
+// deploy-marker: force-fresh-build
+
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // Roles that MUST be at AAL2 (MFA-verified) before any dashboard content loads.
