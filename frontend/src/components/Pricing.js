@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 
 function Pricing({ api, activeStation, session, darkMode }) {
-  const [plans,          setPlans]          = useState([]);
-  const [subscription,   setSubscription]   = useState(null);
-  const [billing,        setBilling]        = useState('monthly');
-  const [loading,        setLoading]        = useState(false);
-  const [selected,       setSelected]       = useState(null);
-  const [error,          setError]          = useState(null);
-  const [showContact,    setShowContact]    = useState(false);
-  const [contactForm,    setContactForm]    = useState({
+  const [plans, setPlans] = useState([]);
+  const [subscription, setSubscription] = useState(null);
+  const [billing, setBilling] = useState('monthly');
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [error, setError] = useState(null);
+  const [showContact, setShowContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
     name: '', email: session?.user?.email || '',
     phone: '', company: '', stations: '1', message: '',
   });
   const [contactSending, setContactSending] = useState(false);
-  const [contactSent,    setContactSent]    = useState(false);
-  const [contactError,   setContactError]   = useState(null);
+  const [contactSent, setContactSent] = useState(false);
+  const [contactError, setContactError] = useState(null);
 
-  const bg     = darkMode ? '#1e1e2e' : '#fff';
-  const text   = darkMode ? '#e0e0e0' : '#1a1a2e';
-  const sub    = darkMode ? '#888'    : '#666';
+  const bg = darkMode ? '#1e1e2e' : '#fff';
+  const text = darkMode ? '#e0e0e0' : '#1a1a2e';
+  const sub = darkMode ? '#888' : '#666';
   const border = darkMode ? '#2a2a3e' : '#e0e0e0';
 
   useEffect(() => {
@@ -29,7 +29,11 @@ function Pricing({ api, activeStation, session, darkMode }) {
     }
   }, [api, activeStation]);
 
+  // ── STEP 1 & 2: Updated handleSubscribe with idempotency key and loading guard ──
   async function handleSubscribe(plan) {
+    // STEP 2: Defense in depth — prevent rapid double-clicks
+    if (loading) return;
+
     if (plan.name?.toLowerCase().includes('enterprise')) {
       setContactForm(f => ({ ...f, email: session?.user?.email || '' }));
       setContactSent(false);
@@ -41,15 +45,22 @@ function Pricing({ api, activeStation, session, darkMode }) {
     setSelected(plan.id);
     setError(null);
     try {
+      // STEP 1: Generate a fresh idempotency key for this checkout attempt
+      const idempotencyKey =
+        (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
       const res = await fetch(api + '/api/payments/initiate', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          station_id:    activeStation,
-          plan_id:       plan.id,
+        body: JSON.stringify({
+          station_id: activeStation,
+          plan_id: plan.id,
           billing_cycle: billing,
-          user_email:    session?.user?.email,
-          user_name:     session?.user?.email?.split('@')[0],
+          user_email: session?.user?.email,
+          user_name: session?.user?.email?.split('@')[0],
+          idempotency_key: idempotencyKey,
         }),
       });
       const data = await res.json();
@@ -63,16 +74,16 @@ function Pricing({ api, activeStation, session, darkMode }) {
   }
 
   async function handleContactSubmit() {
-    if (!contactForm.name.trim())    { setContactError('Name is required.');    return; }
-    if (!contactForm.email.trim())   { setContactError('Email is required.');   return; }
+    if (!contactForm.name.trim()) { setContactError('Name is required.'); return; }
+    if (!contactForm.email.trim()) { setContactError('Email is required.'); return; }
     if (!contactForm.company.trim()) { setContactError('Company is required.'); return; }
     setContactSending(true);
     setContactError(null);
     try {
       const res = await fetch(api + '/api/contact/enterprise', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(contactForm),
+        body: JSON.stringify(contactForm),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send enquiry');
@@ -84,7 +95,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
   }
 
   const statusColor = { trial: '#f39c12', active: '#27ae60', expired: '#e74c3c', cancelled: '#95a5a6' };
-  const statusText  = { trial: 'Trial',   active: 'Active',  expired: 'Expired', cancelled: 'Cancelled' };
+  const statusText = { trial: 'Trial', active: 'Active', expired: 'Expired', cancelled: 'Cancelled' };
 
   const getDaysRemaining = () => {
     if (!subscription) return null;
@@ -97,7 +108,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
 
   const daysRemaining = getDaysRemaining();
   const isCurrentPlan = (plan) => plan.name === subscription?.plan_name;
-  const isEnterprise  = (plan) => plan.name?.toLowerCase().includes('enterprise');
+  const isEnterprise = (plan) => plan.name?.toLowerCase().includes('enterprise');
 
   const inputStyle = {
     width: '100%', boxSizing: 'border-box', padding: '10px 14px',
@@ -299,7 +310,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
               padding: '6px 16px', border: 'none', borderRadius: '6px',
               cursor: 'pointer', fontSize: '13px', fontWeight: '500',
               background: billing === b ? '#1a1a2e' : 'transparent',
-              color:      billing === b ? '#fff' : sub,
+              color: billing === b ? '#fff' : sub,
             }}>
               {b === 'monthly' ? 'Monthly' : (
                 <span>Annual <span style={{ fontSize: '10px', color: '#4CAF50', fontWeight: '700' }}>SAVE 2 MONTHS</span></span>
@@ -312,10 +323,10 @@ function Pricing({ api, activeStation, session, darkMode }) {
       {/* Full plan grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         {plans.map((plan, i) => {
-          const price    = billing === 'annual' ? plan.price_annual : plan.price_monthly;
+          const price = billing === 'annual' ? plan.price_annual : plan.price_monthly;
           const features = typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []);
-          const isPopular     = i === 1;
-          const isCurrent     = isCurrentPlan(plan);
+          const isPopular = i === 1;
+          const isCurrent = isCurrentPlan(plan);
           const isEnterprisePlan = isEnterprise(plan);
 
           return (
@@ -327,7 +338,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
                 position: 'relative', transition: 'transform 0.15s, box-shadow 0.15s',
               }}
               onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; }}
-              onMouseOut={e  => { e.currentTarget.style.transform = 'translateY(0)';    e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'; }}
             >
               {isCurrent && (
                 <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: '#27ae60', color: '#fff', padding: '3px 14px', borderRadius: '99px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>

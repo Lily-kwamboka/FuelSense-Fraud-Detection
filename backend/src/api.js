@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const { getAlerts, acknowledgeAlert, checkHighWaterAlert, checkLowStockAlert } = require('./alerts');
 const { openShift, closeShift, getAllShifts, getShifts } = require('./shift-manager');
 const { Resend } = require('resend');
@@ -24,7 +24,7 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: (origin, cb) => cb(null, true), // allow all — tighten after domain verified
+  origin: (origin, cb) => cb(null, true),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
@@ -37,13 +37,19 @@ app.use(express.json());
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // ── DB ────────────────────────────────────────────────────────────────────────
-let db = null;
+const pool = new Pool({ connectionString: DATABASE_URL, max: 10 });
+
+pool.on('error', (err) => {
+  console.error('[API] Unexpected DB pool error:', err.message);
+});
+
 async function getDb() {
-  if (db) return db;
-  db = new Client({ connectionString: DATABASE_URL });
-  await db.connect();
-  console.log('[API] Database connected');
-  return db;
+  return pool;
+}
+
+async function getTransactionClient() {
+  const client = await pool.connect();
+  return client;
 }
 
 // ── Role access levels ────────────────────────────────────────────────────────
@@ -55,7 +61,6 @@ function getRoleAccessLevel(role) {
 }
 
 // ── Multi-tenant: resolve caller's organization_id from supabase_uid ─────────
-// Returns { orgId, role, stationId, accessLevel } or null if not found
 async function resolveUser(db, supabaseUid) {
   if (!supabaseUid) return null;
   const res = await db.query(
@@ -101,7 +106,6 @@ app.get('/api/user-profile', async (req, res) => {
 });
 
 // ── GET /api/stations ─────────────────────────────────────────────────────────
-// Returns stations scoped to the caller's organization only
 app.get('/api/stations', async (req, res) => {
   try {
     const client = await getDb();
@@ -112,7 +116,6 @@ app.get('/api/stations', async (req, res) => {
     let query = `SELECT id, name, location FROM stations WHERE organization_id = $1`;
     const params = [user.orgId];
 
-    // Station-scoped roles: only see their assigned station
     if (user.accessLevel < 65 && user.stationId) {
       params.push(user.stationId);
       query += ` AND id = $2`;
@@ -138,7 +141,6 @@ app.get('/api/tanks', async (req, res) => {
     const params = [user.orgId];
     let where = `s.organization_id = $1`;
 
-    // Further filter by specific station if requested
     if (stationId) {
       params.push(stationId);
       where += ` AND t.station_id = $${params.length}`;
@@ -561,7 +563,6 @@ app.get('/api/plans', async (req, res) => {
 });
 
 // ── GET /api/subscription ─────────────────────────────────────────────────────
-// Now org-scoped: pass uid to resolve org, or station_id for backwards compat
 app.get('/api/subscription', async (req, res) => {
   try {
     const client = await getDb();
@@ -580,7 +581,6 @@ app.get('/api/subscription', async (req, res) => {
 
     if (!orgId) return res.json(null);
 
-    // First try org-level subscription
     const orgSub = await client.query(
       `SELECT s.*, p.name AS plan_name, p.price_monthly, p.price_annual, p.max_stations, p.max_tanks, p.features
          FROM subscriptions s JOIN subscription_plans p ON p.id = s.plan_id
@@ -589,7 +589,6 @@ app.get('/api/subscription', async (req, res) => {
     );
     if (orgSub.rows.length) return res.json(orgSub.rows[0]);
 
-    // Fall back to station-level subscription for backwards compat
     if (stationId) {
       const stSub = await client.query(
         `SELECT s.*, p.name AS plan_name, p.price_monthly, p.price_annual, p.max_stations, p.max_tanks, p.features
@@ -600,7 +599,6 @@ app.get('/api/subscription', async (req, res) => {
       if (stSub.rows.length) return res.json(stSub.rows[0]);
     }
 
-    // Check org trial status
     const org = await client.query(`SELECT * FROM organizations WHERE id=$1`, [orgId]);
     if (org.rows.length) {
       const o = org.rows[0];
@@ -619,107 +617,246 @@ app.get('/api/subscription', async (req, res) => {
 });
 
 // ── Payments ──────────────────────────────────────────────────────────────────
+
+// ── POST /api/payments/initiate ──────────────────────────────────────────────
 app.post('/api/payments/initiate', async (req, res) => {
-  const { station_id, plan_id, billing_cycle, user_email, user_name, phone, test_amount } = req.body;
-  if (!station_id || !plan_id || !billing_cycle || !user_email)
+  const { station_id, plan_id, billing_cycle, user_email, user_name, phone, test_amount, idempotency_key } = req.body;
+
+  if (!station_id || !plan_id || !billing_cycle || !user_email) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+  if (!idempotency_key) {
+    return res.status(400).json({ error: 'idempotency_key is required' });
+  }
+
   try {
     const client = await getDb();
     const pesapal = require('./pesapal');
-    let plan, amount, isTest = false;
+
+    const existing = await client.query(
+      `SELECT * FROM payments WHERE idempotency_key = $1`, [idempotency_key]
+    );
+    if (existing.rows.length) {
+      const p = existing.rows[0];
+      console.log('[PAYMENT] Idempotent replay — returning existing payment', p.id);
+      return res.json({
+        payment_id: p.id,
+        redirect_url: p.pesapal_redirect_url,
+        amount: p.amount_kes,
+        plan_name: p.plan_name,
+        billing_cycle: p.billing_cycle,
+        is_test: p.plan_name === 'TEST_PAYMENT',
+      });
+    }
+
+    let plan;
+    let amount;
+    let isTest = false;
 
     if (test_amount) {
-      isTest = true; amount = parseFloat(test_amount); plan = { name: 'TEST_PAYMENT', id: 'test' };
+      isTest = true;
+      amount = parseFloat(test_amount);
+      plan = { name: 'TEST_PAYMENT', id: 'test' };
     } else {
-      const planRes = await client.query(`SELECT * FROM subscription_plans WHERE id=$1`, [plan_id]);
+      const planRes = await client.query(`SELECT * FROM subscription_plans WHERE id = $1`, [plan_id]);
       if (!planRes.rows.length) return res.status(404).json({ error: 'Plan not found' });
       plan = planRes.rows[0];
       amount = billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly;
-      if (process.env.MAX_PAYMENT_AMOUNT) amount = Math.min(amount, parseFloat(process.env.MAX_PAYMENT_AMOUNT)); // temp cap — remove MAX_PAYMENT_AMOUNT env var when Pesapal raises limit
     }
 
-    // Get org_id from station
-    const stRes = await client.query(`SELECT organization_id FROM stations WHERE id=$1`, [station_id]);
-    const orgId = stRes.rows[0]?.organization_id || null;
+    console.log('[PAYMENT]', isTest ? 'TEST PAYMENT' : 'LIVE PAYMENT', 'Amount:', amount);
 
-    const payRes = await client.query(
-      `INSERT INTO payments (station_id, organization_id, amount_kes, billing_cycle, plan_name, status)
-       VALUES ($1,$2,$3,$4,$5,'pending') RETURNING id`,
-      [station_id, orgId, amount, billing_cycle, plan.name]
-    );
-    const paymentId = payRes.rows[0].id;
-    const ipnId = 'ae69c243-c3a9-4717-8932-da50bb3db92b';
+    let paymentId;
+    try {
+      const payRes = await client.query(
+        `INSERT INTO payments (station_id, amount_kes, billing_cycle, plan_name, status, idempotency_key)
+         VALUES ($1, $2, $3, $4, 'pending', $5) RETURNING id`,
+        [station_id, amount, billing_cycle, plan.name, idempotency_key]
+      );
+      paymentId = payRes.rows[0].id;
+    } catch (err) {
+      if (err.code === '23505') {
+        const raced = await client.query(`SELECT * FROM payments WHERE idempotency_key = $1`, [idempotency_key]);
+        const p = raced.rows[0];
+        return res.json({
+          payment_id: p.id, redirect_url: p.pesapal_redirect_url,
+          amount: p.amount_kes, plan_name: p.plan_name, billing_cycle: p.billing_cycle, is_test: isTest,
+        });
+      }
+      throw err;
+    }
+
+    const callbackUrl = process.env.API_BASE_URL + '/api/payments/callback';
+    const ipnId = await pesapal.registerIPN(callbackUrl).catch(() => 'default');
 
     const order = {
-      id: paymentId, currency: 'KES', amount: parseFloat(amount),
-      description: isTest ? 'FuelSense Test Payment' : `FuelSense ${plan.name} - ${billing_cycle}`,
-      callback_url: process.env.FRONTEND_URL + '/payment-success',
+      id: paymentId,
+      currency: 'KES',
+      amount: parseFloat(amount),
+      description: isTest ? 'FuelSense Test Payment' : `FuelSense ${plan.name} - ${billing_cycle} subscription`,
+      callback_url: process.env.FRONTEND_URL + '/?tab=payment-result',
       notification_id: ipnId,
       billing_address: {
-        email_address: user_email, phone_number: phone || '', country_code: 'KE',
-        first_name: user_name?.split(' ')[0] || 'Customer', last_name: user_name?.split(' ')[1] || '',
+        email_address: user_email,
+        phone_number: phone || '',
+        country_code: 'KE',
+        first_name: user_name?.split(' ')[0] || 'Customer',
+        last_name: user_name?.split(' ')[1] || '',
       },
     };
 
     const pesapalRes = await pesapal.submitOrder(order);
-    await client.query(`UPDATE payments SET pesapal_order_id=$1 WHERE id=$2`, [pesapalRes.order_tracking_id, paymentId]);
-    res.json({ payment_id: paymentId, redirect_url: pesapalRes.redirect_url, amount, plan_name: plan.name, billing_cycle });
+
+    await client.query(
+      `UPDATE payments SET pesapal_order_id = $1, pesapal_redirect_url = $2 WHERE id = $3`,
+      [pesapalRes.order_tracking_id, pesapalRes.redirect_url, paymentId]
+    );
+
+    res.json({
+      payment_id: paymentId,
+      redirect_url: pesapalRes.redirect_url,
+      amount,
+      plan_name: plan.name,
+      billing_cycle,
+      is_test: isTest,
+    });
+
   } catch (err) {
+    console.error('[API] payment initiate error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/payments/callback', async (req, res) => {
-  const { OrderTrackingId, OrderMerchantReference } = req.query;
+// ── GET /api/payments/status ──────────────────────────────────────────────────
+app.get('/api/payments/status', async (req, res) => {
+  const { orderTrackingId } = req.query;
+  if (!orderTrackingId) return res.status(400).json({ error: 'orderTrackingId required' });
+
   try {
     const client = await getDb();
-    const pesapal = require('./pesapal');
-    const status = await pesapal.getTransactionStatus(OrderTrackingId);
 
-    if (status.payment_status_description === 'Completed') {
-      await client.query(
-        `UPDATE payments SET status='completed', pesapal_tracking_id=$1 WHERE id=$2`,
-        [OrderTrackingId, OrderMerchantReference]
-      );
-      const payRes = await client.query(`SELECT * FROM payments WHERE id=$1`, [OrderMerchantReference]);
-      const payment = payRes.rows[0];
-
-      if (payment && payment.plan_name !== 'TEST_PAYMENT') {
-        const planRes = await client.query(`SELECT * FROM subscription_plans WHERE name=$1`, [payment.plan_name]);
-        const plan = planRes.rows[0];
-        if (plan) {
-          const now = new Date(), end = new Date(now);
-          payment.billing_cycle === 'annual' ? end.setFullYear(end.getFullYear() + 1) : end.setMonth(end.getMonth() + 1);
-
-          const orgId = payment.organization_id;
-          if (orgId) {
-            // Org-level subscription (new model)
-            await client.query(
-              `INSERT INTO subscriptions (station_id, organization_id, plan_id, billing_cycle, status, current_period_start, current_period_end)
-               VALUES ($1,$2,$3,$4,'active',$5,$6)
-               ON CONFLICT (station_id, plan_id) DO UPDATE SET
-                 status='active', organization_id=EXCLUDED.organization_id,
-                 current_period_start=EXCLUDED.current_period_start, current_period_end=EXCLUDED.current_period_end`,
-              [payment.station_id, orgId, plan.id, payment.billing_cycle, now, end]
-            );
-            // Update org subscription status
-            await client.query(
-              `UPDATE organizations SET subscription_status='active', plan_id=$1 WHERE id=$2`,
-              [plan.id, orgId]
-            );
-          }
-        }
-      }
+    const payRes = await client.query(
+      `SELECT status FROM payments WHERE pesapal_order_id = $1`, [orderTrackingId]
+    );
+    if (payRes.rows.length && payRes.rows[0].status === 'completed') {
+      return res.json({ status: 'Completed' });
+    }
+    if (payRes.rows.length && payRes.rows[0].status === 'failed') {
+      return res.json({ status: 'Failed' });
     }
 
-    const redirectUrl = `${process.env.FRONTEND_URL}/?tab=payment-result&status=${encodeURIComponent(status.payment_status_description)}&OrderTrackingId=${OrderTrackingId}`;
-    res.redirect(redirectUrl);
+    const pesapal = require('./pesapal');
+    const live = await pesapal.getTransactionStatus(orderTrackingId);
+    res.json({ status: live.payment_status_description });
   } catch (err) {
-    const errorRedirectUrl = `${process.env.FRONTEND_URL}/?tab=payment-result&status=Error&error=${encodeURIComponent(err.message)}`;
-    res.redirect(errorRedirectUrl);
+    console.error('[API] payment status error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
+// ── GET /api/payments/callback ───────────────────────────────────────────────
+app.get('/api/payments/callback', async (req, res) => {
+  const { OrderTrackingId, OrderMerchantReference } = req.query;
+
+  const client = await getTransactionClient();
+  try {
+    const pesapal = require('./pesapal');
+    const status = await pesapal.getTransactionStatus(OrderTrackingId);
+
+    await client.query('BEGIN');
+
+    if (status.payment_status_description === 'Completed') {
+      await client.query(
+        `UPDATE payments SET status = 'completed', pesapal_tracking_id = $1 WHERE id = $2`,
+        [OrderTrackingId, OrderMerchantReference]
+      );
+
+      const payRes = await client.query(`SELECT * FROM payments WHERE id = $1`, [OrderMerchantReference]);
+      const payment = payRes.rows[0];
+
+      if (payment && payment.plan_name !== 'TEST_PAYMENT') {
+        const planRes = await client.query(`SELECT * FROM subscription_plans WHERE name = $1`, [payment.plan_name]);
+        const plan = planRes.rows[0];
+
+        if (plan) {
+          const now = new Date();
+          const end = new Date(now);
+          if (payment.billing_cycle === 'annual') {
+            end.setFullYear(end.getFullYear() + 1);
+          } else {
+            end.setMonth(end.getMonth() + 1);
+          }
+
+          await client.query(
+            `INSERT INTO subscriptions
+               (station_id, plan_id, billing_cycle, status, current_period_start, current_period_end)
+             VALUES ($1, $2, $3, 'active', $4, $5)
+             ON CONFLICT (station_id, plan_id) DO UPDATE SET
+               status = 'active',
+               current_period_start = EXCLUDED.current_period_start,
+               current_period_end = EXCLUDED.current_period_end`,
+            [payment.station_id, plan.id, payment.billing_cycle, now, end]
+          );
+        }
+      }
+      console.log('[PESAPAL] Payment completed for station:', payment?.station_id);
+    } else if (['Failed', 'Invalid'].includes(status.payment_status_description)) {
+      await client.query(
+        `UPDATE payments SET status = 'failed', pesapal_tracking_id = $1 WHERE id = $2`,
+        [OrderTrackingId, OrderMerchantReference]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.redirect(process.env.FRONTEND_URL + '/?tab=payment-result&OrderTrackingId=' + OrderTrackingId);
+
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => { });
+    console.error('[API] payment callback error:', err.message);
+    res.redirect(process.env.FRONTEND_URL + '?payment=error');
+  } finally {
+    client.release();
+  }
+});
+
+// ── POST /api/payments/refund ─────────────────────────────────────────────────
+app.post('/api/payments/refund', async (req, res) => {
+  const { payment_id, reason } = req.body;
+  if (!payment_id) return res.status(400).json({ error: 'payment_id is required' });
+
+  try {
+    const client = await getDb();
+    const payRes = await client.query(`SELECT * FROM payments WHERE id = $1`, [payment_id]);
+    if (!payRes.rows.length) return res.status(404).json({ error: 'Payment not found' });
+
+    const payment = payRes.rows[0];
+    if (payment.status !== 'completed') {
+      return res.status(400).json({ error: 'Only completed payments can be refunded' });
+    }
+    if (payment.refund_status === 'requested') {
+      return res.status(400).json({ error: 'Refund already requested for this payment' });
+    }
+
+    const pesapal = require('./pesapal');
+    const refundRes = await pesapal.requestRefund(
+      payment.pesapal_tracking_id || payment.pesapal_order_id,
+      payment.amount_kes,
+      reason || 'Duplicate payment reversal'
+    );
+
+    await client.query(
+      `UPDATE payments SET refund_status = 'requested', refund_requested_at = NOW() WHERE id = $1`,
+      [payment_id]
+    );
+
+    res.json({ ok: true, pesapal_response: refundRes });
+  } catch (err) {
+    console.error('[API] refund error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/payments/history ────────────────────────────────────────────────
 app.get('/api/payments/history', async (req, res) => {
   try {
     const client = await getDb();
@@ -794,7 +931,6 @@ app.get('/api/debug-pesapal', (req, res) => {
 });
 
 // ── SUPER ADMIN: manage organizations ────────────────────────────────────────
-// POST /api/admin/organizations — create new client org + invite owner
 app.post('/api/admin/organizations', async (req, res) => {
   const { admin_email, name, slug, owner_email, plan_id, max_stations, max_tanks } = req.body;
   if (!admin_email || !name || !owner_email)
@@ -805,14 +941,12 @@ app.post('/api/admin/organizations', async (req, res) => {
     const isAdmin = await isSuperAdmin(client, admin_email);
     if (!isAdmin) return res.status(403).json({ error: 'Forbidden: super admin only' });
 
-    // Resolve plan limits
     let maxSt = max_stations || 1, maxTk = max_tanks || 5;
     if (plan_id) {
       const planRes = await client.query(`SELECT max_stations, max_tanks FROM subscription_plans WHERE id=$1`, [plan_id]);
       if (planRes.rows.length) { maxSt = planRes.rows[0].max_stations; maxTk = planRes.rows[0].max_tanks; }
     }
 
-    // 1. Create the organization
     const orgRes = await client.query(
       `INSERT INTO organizations (name, slug, owner_email, plan_id, max_stations, max_tanks, subscription_status, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,'trial',$7) RETURNING *`,
@@ -821,7 +955,6 @@ app.post('/api/admin/organizations', async (req, res) => {
     const org = orgRes.rows[0];
     console.log('[SUPER-ADMIN] Created org:', org.name, '| owner:', owner_email);
 
-    // 2. Invite the owner via Supabase Auth (sends a real email with signup link)
     let inviteResult = null;
     let inviteError = null;
 
@@ -846,7 +979,6 @@ app.post('/api/admin/organizations', async (req, res) => {
           inviteResult = data.user;
           console.log('[SUPER-ADMIN] Invite sent to:', owner_email, '| uid:', inviteResult.id);
 
-          // 3. Auto-link: create their user_profiles row right away
           await client.query(
             `INSERT INTO user_profiles (supabase_uid, email, role, station_id, organization_id)
              VALUES ($1,$2,'owner',NULL,$3)
@@ -863,7 +995,6 @@ app.post('/api/admin/organizations', async (req, res) => {
       inviteError = 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured — invite not sent automatically.';
     }
 
-    // 4. Respond with full status
     res.status(201).json({
       ok: true,
       organization: org,
@@ -879,7 +1010,6 @@ app.post('/api/admin/organizations', async (req, res) => {
   }
 });
 
-// GET /api/admin/organizations — list all orgs (super admin only)
 app.get('/api/admin/organizations', async (req, res) => {
   const { admin_email } = req.query;
   try {
@@ -901,7 +1031,6 @@ app.get('/api/admin/organizations', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/admin/organizations/:id — single org details
 app.get('/api/admin/organizations/:id', async (req, res) => {
   const { admin_email } = req.query;
   try {
@@ -919,7 +1048,6 @@ app.get('/api/admin/organizations/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/admin/user-profiles/:uid — update a user's role or station
 app.put('/api/admin/user-profiles/:uid', async (req, res) => {
   const { admin_email, role, station_id } = req.body;
   try {
@@ -945,7 +1073,6 @@ app.post('/api/stations', async (req, res) => {
     const user = await resolveUser(client, uid);
     if (!user || user.accessLevel < 100) return res.status(403).json({ error: 'Owner access required' });
 
-    // Check station limit
     const org = await client.query(`SELECT max_stations FROM organizations WHERE id=$1`, [user.orgId]);
     const countRes = await client.query(`SELECT COUNT(*) AS count FROM stations WHERE organization_id=$1`, [user.orgId]);
     const current = parseInt(countRes.rows[0].count);
@@ -967,23 +1094,14 @@ app.post('/api/stations', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// ADMIN PORTAL ENDPOINTS — used by the separate admin/ Vite app
-// (Stations.js, Tanks.js, Users.js, Suppliers.js)
-// Access to the admin portal itself is gated client-side by ALLOWED_ROLES
-// in admin/src/App.js; these endpoints trust that gate and additionally
-// scope every read/write through resolveAdminOrg() below.
+// ADMIN PORTAL ENDPOINTS
 // ════════════════════════════════════════════════════════════════════════════
 
-// Resolve which organization an admin-portal request should operate on.
-// Accepts uid (preferred) so multi-tenant scoping holds; falls back to the
-// single seed org if uid is absent (keeps older/admin-only flows working).
 async function resolveAdminOrg(db, uid) {
   if (uid) {
     const user = await resolveUser(db, uid);
     if (user?.orgId) return user.orgId;
   }
-  // Fallback: the original Mafuta Salama org (back-compat for admin tools
-  // that haven't been updated to pass uid yet)
   const res = await db.query(`SELECT id FROM organizations ORDER BY created_at ASC LIMIT 1`);
   return res.rows[0]?.id || null;
 }
@@ -992,7 +1110,6 @@ async function resolveAdminOrg(db, uid) {
 app.get('/api/admin/stations', async (req, res) => {
   try {
     const client = await getDb();
-    // Get filterOrgId first - allow null for super admin to see all
     const filterOrgId = req.query.organization_id || null;
     const orgId = await resolveAdminOrg(client, req.query.uid);
     if (!orgId && !filterOrgId) return res.json([]);
@@ -1058,11 +1175,8 @@ app.delete('/api/admin/stations/:id', async (req, res) => {
     const client = await getDb();
     const id = req.params.id;
 
-    // Step 1 — Null out FK references to atg_readings
     await client.query(`UPDATE deliveries SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`UPDATE shifts SET opening_reading_id = NULL, closing_reading_id = NULL WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
-
-    // Step 2 — Delete tables referencing tanks
     await client.query(`DELETE FROM alerts WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM daily_reconciliation WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM deliveries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
@@ -1070,8 +1184,6 @@ app.delete('/api/admin/stations/:id', async (req, res) => {
     await client.query(`DELETE FROM atg_readings WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM strapping_table_entries WHERE tank_id IN (SELECT id FROM tanks WHERE station_id=$1)`, [id]);
     await client.query(`DELETE FROM tanks WHERE station_id=$1`, [id]);
-
-    // Step 3 — Delete tables referencing stations
     await client.query(`DELETE FROM alert_config WHERE station_id=$1`, [id]);
     await client.query(`DELETE FROM audit_log WHERE station_id=$1`, [id]);
     await client.query(`DELETE FROM payments WHERE station_id=$1`, [id]);
@@ -1166,7 +1278,6 @@ app.get('/api/admin/suppliers', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    // suppliers table may not exist yet on older deployments — fail soft
     if (err.message.includes('does not exist')) return res.json([]);
     res.status(500).json({ error: err.message });
   }
@@ -1233,7 +1344,6 @@ async function checkExpiredSubscriptions() {
     );
     if (result.rows.length) {
       console.log(`[CRON] Expired ${result.rows.length} subscription(s)`);
-      // Also update org status if all their subs expired
       for (const row of result.rows) {
         if (row.organization_id) {
           await client.query(
@@ -1283,7 +1393,7 @@ setInterval(checkExpiredSubscriptions, 60 * 60 * 1000);
 setInterval(checkUpcomingRenewals, 6 * 60 * 60 * 1000);
 setTimeout(async () => { await checkExpiredSubscriptions(); await checkUpcomingRenewals(); }, 5000);
 
-// GET /api/admin/alert-config/:stationId
+// ── GET /api/admin/alert-config/:stationId ───────────────────────────────────
 app.get('/api/admin/alert-config/:stationId', async (req, res) => {
   try {
     const client = await getDb();
@@ -1311,7 +1421,7 @@ app.get('/api/admin/alert-config/:stationId', async (req, res) => {
   }
 });
 
-// POST /api/admin/alert-config (create or update)
+// ── POST /api/admin/alert-config ─────────────────────────────────────────────
 app.post('/api/admin/alert-config', async (req, res) => {
   const {
     station_id,
@@ -1332,7 +1442,6 @@ app.post('/api/admin/alert-config', async (req, res) => {
 
   try {
     const client = await getDb();
-    // Upsert — create if not exists, update if exists
     const result = await client.query(
       `INSERT INTO alert_config (
         station_id, low_stock_threshold_pct, high_water_mm,
@@ -1377,7 +1486,7 @@ app.post('/api/admin/alert-config', async (req, res) => {
   }
 });
 
-// GET /api/admin/reconciliation-config/:stationId
+// ── GET /api/admin/reconciliation-config/:stationId ──────────────────────────
 app.get('/api/admin/reconciliation-config/:stationId', async (req, res) => {
   try {
     const client = await getDb();
@@ -1399,7 +1508,7 @@ app.get('/api/admin/reconciliation-config/:stationId', async (req, res) => {
   }
 });
 
-// POST /api/admin/reconciliation-config
+// ── POST /api/admin/reconciliation-config ────────────────────────────────────
 app.post('/api/admin/reconciliation-config', async (req, res) => {
   const { station_id, default_tolerance_pct, stabilisation_std_dev_threshold, delivery_detection_threshold_mm, atg_polling_interval_seconds, stabilisation_timeout_hours } = req.body;
   if (!station_id) return res.status(400).json({ error: 'station_id is required' });
@@ -1425,7 +1534,7 @@ app.post('/api/admin/reconciliation-config', async (req, res) => {
   }
 });
 
-// ── Start ATG simulator (runs on port 10001 for dev/demo) ─────────────────
+// ── ATG simulator ─────────────────────────────────────────────────────────────
 if (process.env.USE_ATG_SIMULATOR === 'true') {
   try {
     require('./atg-simulator');
@@ -1435,7 +1544,7 @@ if (process.env.USE_ATG_SIMULATOR === 'true') {
   }
 }
 
-// ── Start scheduler ───────────────────────────────────────────────────────
+// ── Scheduler ─────────────────────────────────────────────────────────────────
 setTimeout(() => {
   try {
     require('./scheduler');
@@ -1445,8 +1554,7 @@ setTimeout(() => {
   }
 }, 3000);
 
-// ── ADMIN ROUTES ──────────────────────────────────────────────────────────
-
+// ── ADMIN ROUTES (duplicate) ─────────────────────────────────────────────────
 app.get('/api/admin/stations', async (req, res) => {
   try {
     const client = await getDb();
@@ -1716,7 +1824,7 @@ app.post('/api/admin/atg-config/:stationId/test', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── Strapping upload ──────────────────────────────────────────────────────
+// ── Strapping upload ──────────────────────────────────────────────────────────
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const fs = require('fs');
@@ -1764,7 +1872,7 @@ app.post('/api/tanks/:tankId/strapping-upload', upload.single('file'), async (re
   }
 });
 
-// ── Start scheduler ───────────────────────────────────────────────────────
+// ── ATG simulator (duplicate) ────────────────────────────────────────────────
 if (process.env.USE_ATG_SIMULATOR === 'true') {
   try {
     require('./atg-simulator');
@@ -1774,6 +1882,7 @@ if (process.env.USE_ATG_SIMULATOR === 'true') {
   }
 }
 
+// ── Scheduler (duplicate) ────────────────────────────────────────────────────
 setTimeout(() => {
   try {
     require('./scheduler');

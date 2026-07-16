@@ -69,19 +69,19 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check for URL parameters on initial load (for payment callback)
+  // ── STEP: Check for URL parameters on initial load (UPDATED) ──────────────
+  // Pesapal's real redirect only ever sends OrderTrackingId and
+  // OrderMerchantReference, never a `status` param. PaymentResult.js now polls
+  // /api/payments/status using orderTrackingId instead of trusting a client-
+  // suppliable status param, so statusParam is no longer read here at all.
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    const statusParam = urlParams.get('status');
     const orderIdParam = urlParams.get('OrderTrackingId');
 
     if (tabParam === 'payment-result') {
       setShowPublicLogin(true);
       setActiveTab('payment-result');
-      if (statusParam) {
-        sessionStorage.setItem('paymentStatus', statusParam);
-      }
       if (orderIdParam) {
         sessionStorage.setItem('orderTrackingId', orderIdParam);
       }
@@ -719,8 +719,7 @@ function MfaGate({ onVerified, onSignOut }) {
             placeholder="000000"
             style={{ ...inputStyle, textAlign: 'center', fontSize: '24px', letterSpacing: '8px', fontWeight: '700' }}
             onKeyDown={e => e.key === 'Enter' && verifyEnrollment()}
-            autoFocus
-          />
+            autoFocus />
           <button onClick={verifyEnrollment} disabled={loading} style={btn(dark)}>
             {loading ? 'Verifying...' : 'Activate 2FA & Continue →'}
           </button>

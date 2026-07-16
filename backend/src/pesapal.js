@@ -2,9 +2,9 @@
 
 const fetch = require('node-fetch');
 
-const CONSUMER_KEY    = process.env.PESAPAL_CONSUMER_KEY;
+const CONSUMER_KEY = process.env.PESAPAL_CONSUMER_KEY;
 const CONSUMER_SECRET = process.env.PESAPAL_CONSUMER_SECRET;
-const IS_SANDBOX      = process.env.PESAPAL_ENV !== 'live';
+const IS_SANDBOX = process.env.PESAPAL_ENV !== 'live';
 
 const BASE_URL = IS_SANDBOX
   ? 'https://cybqa.pesapal.com/pesapalv3'
@@ -15,20 +15,14 @@ console.log('[PESAPAL] Environment:', IS_SANDBOX ? 'SANDBOX' : 'LIVE', '| Base U
 let cachedToken = null;
 let tokenExpiry = null;
 
-// Refresh token 5 minutes before expiry (3 hours 55 minutes)
-const REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
-
+// ── Get OAuth Token ──────────────────────────────────────────
 async function getToken() {
-  const now = Date.now();
-  
-  // Check if we have a valid cached token (with buffer)
-  if (cachedToken && tokenExpiry && (now + REFRESH_BUFFER_MS) < tokenExpiry) {
-    console.log('[PESAPAL] Using cached token (valid for', Math.round((tokenExpiry - now) / 1000 / 60), 'more minutes)');
+  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
     return cachedToken;
   }
 
   console.log('[PESAPAL] Requesting new token...');
-  
+
   const res = await fetch(BASE_URL + '/api/Auth/RequestToken', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -46,14 +40,15 @@ async function getToken() {
   }
 
   cachedToken = data.token;
-  tokenExpiry = Date.now() + (4 * 60 * 60 * 1000); // 4 hours from now
-  
-  console.log('[PESAPAL] New token obtained, valid until:', new Date(tokenExpiry).toLocaleTimeString());
+  tokenExpiry = Date.now() + (4 * 60 * 60 * 1000); // 4 hours
+  console.log('[PESAPAL] Token obtained successfully');
   return cachedToken;
 }
 
+// ── Register IPN ─────────────────────────────────────────────
 async function registerIPN(callbackUrl) {
   const token = await getToken();
+
   console.log('[PESAPAL] Registering IPN for URL:', callbackUrl);
 
   const res = await fetch(BASE_URL + '/api/URLSetup/RegisterIPN', {
@@ -61,7 +56,7 @@ async function registerIPN(callbackUrl) {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': 'Bearer ' + token,
     },
     body: JSON.stringify({
       url: callbackUrl,
@@ -74,57 +69,61 @@ async function registerIPN(callbackUrl) {
   return data.ipn_id;
 }
 
+// ── Submit Order ─────────────────────────────────────────────
 async function submitOrder(order) {
   const token = await getToken();
   console.log('[PESAPAL] Submitting order:', JSON.stringify(order));
 
   const payload = {
     ...order,
-    amount: parseFloat(order.amount).toFixed(2)
+    amount: parseFloat(order.amount).toFixed(2),
   };
 
   const url = `${BASE_URL}/api/Transactions/SubmitOrderRequest`;
-  console.log('[PESAPAL] Request URL:', url);
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-  console.log('[PESAPAL] Response status:', res.status);
+    const text = await res.text();
 
-  const text = await res.text();
-  console.log('[PESAPAL] Raw response (first 500 chars):', text.substring(0, 500));
+    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+      console.error('[PESAPAL] Received HTML instead of JSON.');
+      throw new Error(`Pesapal returned HTML (status ${res.status}). Check API configuration.`);
+    }
 
-  if (res.status === 401) {
-    // If token is rejected, force refresh on next request
-    console.log('[PESAPAL] Token rejected, clearing cache for next request');
-    cachedToken = null;
-    tokenExpiry = null;
-    throw new Error('Pesapal authentication failed on SubmitOrder. Token may have expired.');
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error('[PESAPAL] Failed to parse JSON:', e.message);
+      throw new Error(`Invalid JSON response from Pesapal: ${text.substring(0, 200)}`);
+    }
+
+    if (!data.redirect_url) {
+      console.error('[PESAPAL] Order failed:', JSON.stringify(data));
+      throw new Error('Pesapal order failed: ' + JSON.stringify(data));
+    }
+
+    console.log('[PESAPAL] Order submitted successfully, redirect URL:', data.redirect_url);
+    return data;
+  } catch (err) {
+    console.error('[PESAPAL] Submit order error:', err.message);
+    throw err;
   }
-
-  if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-    throw new Error(`Pesapal returned HTML (status ${res.status})`);
-  }
-
-  const data = JSON.parse(text);
-
-  if (!data.redirect_url) {
-    throw new Error('Pesapal order failed: ' + JSON.stringify(data));
-  }
-
-  console.log('[PESAPAL] Order submitted successfully, redirect URL:', data.redirect_url);
-  return data;
 }
 
+// ── Get Transaction Status ───────────────────────────────────
 async function getTransactionStatus(orderTrackingId) {
   const token = await getToken();
+
   console.log('[PESAPAL] Getting transaction status for:', orderTrackingId);
 
   const res = await fetch(
@@ -132,21 +131,66 @@ async function getTransactionStatus(orderTrackingId) {
     {
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': 'Bearer ' + token,
       },
     }
   );
 
   const text = await res.text();
-  
+
   if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
     console.error('[PESAPAL] Received HTML for transaction status');
     throw new Error('Pesapal returned HTML for transaction status');
   }
 
   const data = JSON.parse(text);
-  console.log('[PESAPAL] Transaction status:', data.payment_status_description);
+  console.log('[PESAPAL] Transaction status retrieved for:', orderTrackingId, '| Status:', data.payment_status_description);
   return data;
 }
 
-module.exports = { getToken, registerIPN, submitOrder, getTransactionStatus };
+// ── Request Refund ────────────────────────────────────────────
+// Pesapal's refund endpoint is asynchronous — it acknowledges the request
+// but actual reversal to the client's card/M-Pesa/Airtel Money account
+// typically takes 3-7 business days depending on the channel. Use this to
+// KICK OFF a refund; pair it with an immediate internal account credit
+// (extend subscription / mark prepaid) so the client isn't left waiting on
+// the bank rail before their FuelSense access reflects the correction.
+async function requestRefund(orderTrackingId, amount, remarks) {
+  const token = await getToken();
+
+  console.log('[PESAPAL] Requesting refund for:', orderTrackingId, '| Amount:', amount);
+
+  const res = await fetch(BASE_URL + '/api/Transactions/RequestRefund', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer ' + token,
+    },
+    body: JSON.stringify({
+      confirmation_code: orderTrackingId,
+      amount: parseFloat(amount).toFixed(2),
+      username: 'FuelSense Admin',
+      remarks: remarks || 'Duplicate payment reversal',
+    }),
+  });
+
+  const text = await res.text();
+
+  if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+    console.error('[PESAPAL] Received HTML for refund request');
+    throw new Error('Pesapal returned HTML for refund request');
+  }
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Invalid JSON response from Pesapal refund: ${text.substring(0, 200)}`);
+  }
+
+  console.log('[PESAPAL] Refund response:', JSON.stringify(data));
+  return data;
+}
+
+module.exports = { getToken, registerIPN, submitOrder, getTransactionStatus, requestRefund };
