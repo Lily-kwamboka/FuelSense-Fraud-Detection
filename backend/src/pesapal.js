@@ -15,6 +15,9 @@ console.log('[PESAPAL] Environment:', IS_SANDBOX ? 'SANDBOX' : 'LIVE', '| Base U
 let cachedToken = null;
 let tokenExpiry = null;
 
+let cachedIpnId = null;
+let cachedIpnPromise = null;
+
 async function getToken() {
   if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
     return cachedToken;
@@ -44,27 +47,78 @@ async function getToken() {
   return cachedToken;
 }
 
+// ── Register IPN ──────────────────────────────────────────────────────────
+// Registers once and caches the result for the lifetime of the process —
+// the IPN ID does not change between transactions, so there is no reason
+// to re-register it on every payment. This removes Pesapal's registration
+// endpoint from the per-transaction critical path: a transient outage
+// there (e.g. a Cloudflare 522 on pay.pesapal.com) can no longer take
+// down live payments once the ID is cached.
+//
+// Retries transient failures (5xx / network errors) with backoff before
+// giving up. Throws on final failure — callers must NOT fall back to a
+// placeholder ID, since Pesapal's SubmitOrderRequest always rejects a
+// non-UUID notification_id anyway (that's the "Invalid IPN URL ID" error).
 async function registerIPN(callbackUrl) {
-  const token = await getToken();
+  if (cachedIpnId) return cachedIpnId;
 
-  console.log('[PESAPAL] Registering IPN for URL:', callbackUrl);
+  if (!cachedIpnPromise) {
+    cachedIpnPromise = (async () => {
+      const MAX_RETRIES = 3;
+      let lastErr;
 
-  const res = await fetch(BASE_URL + '/api/URLSetup/RegisterIPN', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': 'Bearer ' + token,
-    },
-    body: JSON.stringify({
-      url: callbackUrl,
-      ipn_notification_type: 'GET',
-    }),
-  });
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const token = await getToken();
 
-  const data = await res.json();
-  console.log('[PESAPAL] IPN registered:', data.ipn_id);
-  return data.ipn_id;
+          console.log('[PESAPAL] Registering IPN for URL:', callbackUrl);
+
+          const res = await fetch(BASE_URL + '/api/URLSetup/RegisterIPN', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer ' + token,
+            },
+            body: JSON.stringify({
+              url: callbackUrl,
+              ipn_notification_type: 'GET',
+            }),
+          });
+
+          const data = await res.json();
+
+          if (!data.ipn_id) {
+            const err = new Error('No ipn_id in response: ' + JSON.stringify(data));
+            err.status = res.status;
+            throw err;
+          }
+
+          console.log('[PESAPAL] IPN registered:', data.ipn_id);
+          cachedIpnId = data.ipn_id;
+          return cachedIpnId;
+        } catch (err) {
+          lastErr = err;
+          const status = err.status;
+          const isTransient = !status || status >= 500;
+
+          console.error(
+            `[PESAPAL] IPN registration attempt ${attempt}/${MAX_RETRIES} failed:`,
+            err.message
+          );
+
+          if (!isTransient || attempt === MAX_RETRIES) break;
+          await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1))); // 500ms, 1s, 2s
+        }
+      }
+
+      throw lastErr;
+    })().finally(() => {
+      cachedIpnPromise = null;
+    });
+  }
+
+  return cachedIpnPromise;
 }
 
 async function submitOrder(order) {

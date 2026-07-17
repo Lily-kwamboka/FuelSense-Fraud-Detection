@@ -687,7 +687,17 @@ app.post('/api/payments/initiate', async (req, res) => {
     }
 
     const callbackUrl = process.env.API_BASE_URL + '/api/payments/callback';
-    const ipnId = await pesapal.registerIPN(callbackUrl).catch(() => 'default');
+
+    // Fail clearly if IPN registration fails — never fall back to a
+    // placeholder ID. A fallback here just guarantees a confusing
+    // downstream Pesapal rejection instead of an honest "try again".
+    let ipnId;
+    try {
+      ipnId = await pesapal.registerIPN(callbackUrl);
+    } catch (err) {
+      console.error('[PAYMENT] IPN registration failed, aborting:', err.message);
+      return res.status(503).json({ error: 'Payment provider temporarily unavailable. Please try again in a moment.' });
+    }
 
     const order = {
       id: paymentId,
@@ -903,7 +913,19 @@ app.post('/api/payments/test', async (req, res) => {
       [realStationId, orgId, amount]
     );
     const paymentId = payRes.rows[0].id;
-    const ipnId = 'ae69c243-c3a9-4717-8932-da50bb3db92b';
+
+    // Use the same cached/registered IPN as /initiate instead of a
+    // hardcoded ID, so there's only ever one IPN registration to track
+    // in the Pesapal dashboard.
+    const callbackUrl = process.env.API_BASE_URL + '/api/payments/callback';
+    let ipnId;
+    try {
+      ipnId = await pesapal.registerIPN(callbackUrl);
+    } catch (err) {
+      console.error('[PAYMENT] IPN registration failed, aborting:', err.message);
+      return res.status(503).json({ error: 'Payment provider temporarily unavailable. Please try again in a moment.' });
+    }
+
     const pesapalRes = await pesapal.submitOrder({
       id: paymentId, currency: 'KES', amount: parseFloat(amount),
       description: `FuelSense Test Payment - KES ${amount}`,
