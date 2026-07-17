@@ -336,6 +336,29 @@ function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, fontFamily: 'system-ui, sans-serif' }}>
 
+      {/* Animation styles for dashboard summary cards */}
+      <style>{`
+        @keyframes fsCardIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fsIconPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        .fs-summary-card {
+          animation: fsCardIn 0.5s ease both;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .fs-summary-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+        }
+        .fs-summary-card-icon {
+          animation: fsIconPulse 2.4s ease-in-out infinite;
+        }
+      `}</style>
+
       {!isMobile && (
         <Sidebar
           activeTab={activeTab}
@@ -460,10 +483,11 @@ function App() {
                   ))}
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '8px' : '16px', marginBottom: '24px' }}>
-                    <SummaryCard label="Total NSV" value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
-                    <SummaryCard label="Active Tanks" value={Array.isArray(tanks) ? tanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
-                    <SummaryCard label="Deliveries" value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard delay={0} label="Total NSV" value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard delay={80} label="Active Tanks" value={Array.isArray(tanks) ? tanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard delay={160} label="Deliveries" value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard
+                      delay={240}
                       label="Open Alerts"
                       value={totalOpenAlerts + ' open'}
                       icon="🔔"
@@ -764,15 +788,73 @@ function MfaGate({ onVerified, onSignOut }) {
   );
 }
 
-function SummaryCard({ label, value, icon, color, bg, text, sub, mobile, onClick }) {
+// ── SummaryCard: animated, colorful dashboard stat card ──────────────────────
+// - Fades/slides in on mount, staggered per-card via `delay`
+// - Lifts on hover with a stronger shadow
+// - Icon sits in a soft colored circle and pulses gently
+// - Numeric portion of the value counts up from 0 on mount
+function SummaryCard({ label, value, icon, color, bg, sub, mobile, onClick, delay = 0 }) {
+  const valueStr = String(value);
+  const numMatch = valueStr.match(/[\d,]+(\.\d+)?/);
+  const targetNum = numMatch ? parseFloat(numMatch[0].replace(/,/g, '')) : null;
+  const prefix = numMatch ? valueStr.slice(0, numMatch.index) : '';
+  const suffix = numMatch ? valueStr.slice(numMatch.index + numMatch[0].length) : '';
+  const [displayNum, setDisplayNum] = useState(0);
+
+  useEffect(() => {
+    if (targetNum === null) return;
+    let frame;
+    const duration = 800;
+    const startTime = performance.now();
+    const tick = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayNum(targetNum * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [targetNum]);
+
+  const formattedValue = targetNum === null
+    ? valueStr
+    : `${prefix}${Number.isInteger(targetNum) ? Math.round(displayNum).toLocaleString() : displayNum.toFixed(1)}${suffix}`;
+
   return (
-    <div onClick={onClick} style={{ background: bg, borderRadius: '12px', padding: mobile ? '14px' : '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: onClick ? 'pointer' : 'default' }}>
+    <div
+      className="fs-summary-card"
+      onClick={onClick}
+      style={{
+        background: bg,
+        borderRadius: '14px',
+        padding: mobile ? '14px' : '20px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        cursor: onClick ? 'pointer' : 'default',
+        borderTop: `3px solid ${color}`,
+        animationDelay: `${delay}ms`,
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: mobile ? '11px' : '13px', color: sub, marginBottom: '6px' }}>{label}</div>
-          <div style={{ fontSize: mobile ? '16px' : '22px', fontWeight: '700', color }}>{value}</div>
+          <div style={{ fontSize: mobile ? '11px' : '13px', color: sub, marginBottom: '6px', fontWeight: 500 }}>{label}</div>
+          <div style={{ fontSize: mobile ? '16px' : '22px', fontWeight: '700', color }}>{formattedValue}</div>
         </div>
-        <div style={{ fontSize: mobile ? '20px' : '28px' }}>{icon}</div>
+        <div
+          className="fs-summary-card-icon"
+          style={{
+            fontSize: mobile ? '18px' : '22px',
+            width: mobile ? '36px' : '44px',
+            height: mobile ? '36px' : '44px',
+            borderRadius: '50%',
+            background: `${color}22`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </div>
       </div>
     </div>
   );
