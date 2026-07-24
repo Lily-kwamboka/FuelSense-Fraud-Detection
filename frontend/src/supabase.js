@@ -34,9 +34,9 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     document.body.prepend(errorDiv);
   }
 } else {
-  console.log('✅ Supabase credentials loaded successfully');
-  console.log('REACT_APP_SUPABASE_URL:', SUPABASE_URL ? `${SUPABASE_URL.substring(0, 20)}...` : 'Missing');
-  console.log('REACT_APP_SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? `${SUPABASE_ANON_KEY.substring(0, 20)}...` : 'Missing');
+  //console.log('✅ Supabase credentials loaded successfully');
+  //console.log('REACT_APP_SUPABASE_URL:', SUPABASE_URL ? `${SUPABASE_URL.substring(0, 20)}...` : 'Missing');
+  //console.log('REACT_APP_SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? `${SUPABASE_ANON_KEY.substring(0, 20)}...` : 'Missing');
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
