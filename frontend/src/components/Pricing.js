@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import {
+  savePendingPayment,
+  attachOrderTrackingId,
+  getPendingPayment,
+  clearPendingPayment,
+  isPendingPaymentStale,
+} from './pendingPayment';
 
 function Pricing({ api, activeStation, session, darkMode }) {
   const [plans, setPlans] = useState([]);
@@ -8,6 +15,8 @@ function Pricing({ api, activeStation, session, darkMode }) {
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
   const [showContact, setShowContact] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState(null);
+  const [pendingStatus, setPendingStatus] = useState(null); // null | 'checking' | 'Completed' | 'Failed' | 'still_pending' | 'never_started'
   const [contactForm, setContactForm] = useState({
     name: '', email: session?.user?.email || '',
     phone: '', company: '', stations: '1', message: '',
@@ -21,6 +30,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
   const sub = darkMode ? '#888' : '#666';
   const border = darkMode ? '#2a2a3e' : '#e0e0e0';
 
+  // Existing useEffect for fetching plans and subscription
   useEffect(() => {
     fetch(api + '/api/plans').then(r => r.json()).then(setPlans).catch(console.error);
     if (activeStation) {
@@ -29,6 +39,64 @@ function Pricing({ api, activeStation, session, darkMode }) {
     }
   }, [api, activeStation]);
 
+  // NEW: Resume on load - check for pending payments
+  useEffect(() => {
+    const pending = getPendingPayment();
+    if (!pending) return;
+
+    if (isPendingPaymentStale(pending)) {
+      clearPendingPayment();
+      return;
+    }
+
+    setPendingPayment(pending);
+
+    if (!pending.orderTrackingId) {
+      setPendingStatus('never_started');
+      return;
+    }
+
+    checkPendingStatus(pending.orderTrackingId);
+  }, []);
+
+  // NEW: Check pending payment status
+  async function checkPendingStatus(orderTrackingId) {
+    setPendingStatus('checking');
+    try {
+      const res = await fetch(api + '/api/payments/status?orderTrackingId=' + orderTrackingId);
+      const data = await res.json();
+      if (data.status === 'Completed') {
+        setPendingStatus('Completed');
+        clearPendingPayment();
+        if (activeStation) {
+          fetch(api + '/api/subscription?station_id=' + activeStation + '&uid=' + (session?.user?.id || ''))
+            .then(r => r.json()).then(setSubscription).catch(console.error);
+        }
+      } else if (['Failed', 'Invalid', 'Cancelled', 'Error'].includes(data.status)) {
+        setPendingStatus('Failed');
+        clearPendingPayment();
+      } else {
+        setPendingStatus('still_pending');
+      }
+    } catch (err) {
+      console.error('[Pricing] Pending status check failed:', err);
+    }
+  }
+
+  // NEW: Handle online reconnection - resume sync
+  useEffect(() => {
+    function handleOnline() {
+      const pending = getPendingPayment();
+      if (pending?.orderTrackingId) {
+        checkPendingStatus(pending.orderTrackingId);
+      }
+    }
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Updated handleSubscribe with network-resilient checkout
   async function handleSubscribe(plan) {
     if (loading) return; // already mid-checkout, ignore repeat clicks
 
@@ -43,14 +111,27 @@ function Pricing({ api, activeStation, session, darkMode }) {
     setSelected(plan.id);
     setError(null);
     try {
-      // Generated fresh for THIS checkout attempt. The server-side unique
-      // constraint on idempotency_key is what actually prevents duplicate
-      // Pesapal orders — this key is what makes that constraint meaningful
-      // per attempt (a double-click, a slow-network retry, etc.).
-      const idempotencyKey =
-        (window.crypto && window.crypto.randomUUID)
+      const existingPending = getPendingPayment();
+      const sameAttempt = existingPending
+        && existingPending.planId === plan.id
+        && existingPending.billingCycle === billing
+        && !isPendingPaymentStale(existingPending);
+
+      const idempotencyKey = sameAttempt
+        ? existingPending.idempotencyKey
+        : ((window.crypto && window.crypto.randomUUID)
           ? window.crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+      if (!sameAttempt) {
+        savePendingPayment({
+          idempotencyKey,
+          planId: plan.id,
+          planName: plan.name,
+          billingCycle: billing,
+          stationId: activeStation,
+        });
+      }
 
       const res = await fetch(api + '/api/payments/initiate', {
         method: 'POST',
@@ -66,6 +147,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Payment initiation failed');
+
       if (data.redirect_url) window.location.href = data.redirect_url;
     } catch (err) {
       setError(err.message);
@@ -245,6 +327,29 @@ function Pricing({ api, activeStation, session, darkMode }) {
       {error && (
         <div style={{ background: '#fdecea', border: '1px solid #f5c6cb', color: '#721c24', padding: '12px 16px', borderRadius: '8px', fontSize: '13px', marginBottom: '20px' }}>
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* NEW: Pending payment resume banner */}
+      {pendingPayment && pendingStatus && pendingStatus !== 'Completed' && (
+        <div style={{
+          background: pendingStatus === 'Failed' ? '#fdecea' : '#fff3cd',
+          border: `1px solid ${pendingStatus === 'Failed' ? '#f5c6cb' : '#ffc107'}`,
+          borderRadius: '10px', padding: '14px 18px', marginBottom: '20px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
+        }}>
+          <div style={{ fontSize: '13px', color: pendingStatus === 'Failed' ? '#721c24' : '#856404' }}>
+            {pendingStatus === 'checking' && <>🔄 <strong>Checking a payment you started earlier</strong> for {pendingPayment.planName}...</>}
+            {pendingStatus === 'still_pending' && <>⏳ <strong>A payment for {pendingPayment.planName} is still processing.</strong> We'll keep checking — safe to continue browsing.</>}
+            {pendingStatus === 'never_started' && <>⚠️ <strong>A checkout for {pendingPayment.planName} didn't complete</strong> — likely a connection drop. You can safely retry.</>}
+            {pendingStatus === 'Failed' && <>❌ <strong>Your last payment attempt for {pendingPayment.planName} failed.</strong> No charge should have been made.</>}
+          </div>
+          <button
+            onClick={() => { clearPendingPayment(); setPendingPayment(null); setPendingStatus(null); }}
+            style={{ background: 'transparent', border: 'none', color: pendingStatus === 'Failed' ? '#721c24' : '#856404', textDecoration: 'underline', fontSize: '12px', cursor: 'pointer' }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
