@@ -23,6 +23,8 @@ import useIsMobile from './useIsMobile';
 import { useAuditLog } from './useAuditLog';
 import { useToast } from './Toast';
 import AuditLog from './components/AuditLog';
+import useHealthCheck from './useHealthCheck';
+import MaintenanceScreen from './components/MaintenanceScreen';
 
 // deploy-marker: force-fresh-build
 
@@ -54,6 +56,9 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [mfaStatus, setMfaStatus] = useState('checking'); // checking | required | clear
   const { log } = useAuditLog(session, userProfile, activeStation);
+
+  // ── Health check hook ──
+  const { status: healthStatus, lastCheckedAt, retryNow } = useHealthCheck();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -296,10 +301,20 @@ function App() {
   const shouldShowContent = hasAccess || activeTab === 'pricing' || activeTab === 'payment-result';
   const shouldShowAccessDenied = isExpired && activeTab !== 'pricing' && activeTab !== 'payment-result';
 
+  // ── PRIORITY 1: Reset password page ──
   if (window.location.pathname === '/reset-password') {
     return <ResetPassword />;
   }
 
+  // ── PRIORITY 2: Backend health check ──
+  // Show maintenance screen if backend is down or offline, catching it before
+  // any auth/data loading attempts happen. This runs after reset-password
+  // check (which must always work) but before authLoading.
+  if (healthStatus === 'down' || healthStatus === 'offline') {
+    return <MaintenanceScreen status={healthStatus} lastCheckedAt={lastCheckedAt} retryNow={retryNow} />;
+  }
+
+  // ── PRIORITY 3: Auth loading ──
   if (authLoading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e' }}>
