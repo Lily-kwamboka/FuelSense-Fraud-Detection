@@ -1914,4 +1914,177 @@ setTimeout(() => {
   }
 }, 3000);
 
+// ── PAYMENTS ADMIN ROUTES ─────────────────────────────────────────────────
+
+// GET all payments with org and station details
+app.get('/api/admin/payments', async (req, res) => {
+  try {
+    const client = await getDb();
+    const orgId = req.query.organization_id;
+    const stationId = req.query.station_id;
+    const status = req.query.status;
+
+    let query = `
+      SELECT p.*, 
+             s.name AS station_name,
+             o.name AS organization_name
+      FROM payments p
+      LEFT JOIN stations s ON s.id = p.station_id
+      LEFT JOIN organizations o ON o.id = p.organization_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (orgId) { params.push(orgId); query += ` AND p.organization_id = $${params.length}`; }
+    if (stationId) { params.push(stationId); query += ` AND p.station_id = $${params.length}`; }
+    if (status) { params.push(status); query += ` AND p.status = $${params.length}`; }
+
+    query += ` ORDER BY p.created_at DESC LIMIT 100`;
+    const result = await client.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('[API] GET admin/payments error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET all subscriptions with org, station and plan details
+app.get('/api/admin/subscriptions', async (req, res) => {
+  try {
+    const client = await getDb();
+    const orgId = req.query.organization_id;
+    const status = req.query.status;
+
+    let query = `
+      SELECT sub.*,
+             s.name AS station_name,
+             o.name AS organization_name,
+             p.name AS plan_name,
+             p.price_monthly,
+             p.price_annual
+      FROM subscriptions sub
+      LEFT JOIN stations s ON s.id = sub.station_id
+      LEFT JOIN organizations o ON o.id = sub.organization_id
+      LEFT JOIN subscription_plans p ON p.id = sub.plan_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (orgId) { params.push(orgId); query += ` AND sub.organization_id = $${params.length}`; }
+    if (status) { params.push(status); query += ` AND sub.status = $${params.length}`; }
+
+    query += ` ORDER BY sub.created_at DESC`;
+    const result = await client.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('[API] GET admin/subscriptions error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST manually activate or extend a subscription
+app.post('/api/admin/subscriptions/:id/activate', async (req, res) => {
+  const { months, plan_id, notes } = req.body;
+  try {
+    const client = await getDb();
+
+    // Get current subscription
+    const subRes = await client.query(`SELECT * FROM subscriptions WHERE id = $1`, [req.params.id]);
+    if (!subRes.rows.length) return res.status(404).json({ error: 'Subscription not found' });
+
+    const sub = subRes.rows[0];
+    const now = new Date();
+
+    // Calculate new period end
+    const currentEnd = sub.current_period_end ? new Date(sub.current_period_end) : now;
+    const startFrom = currentEnd > now ? currentEnd : now;
+    const newEnd = new Date(startFrom);
+    newEnd.setMonth(newEnd.getMonth() + (months || 1));
+
+    // Update subscription
+    const result = await client.query(
+      `UPDATE subscriptions SET 
+         status = 'active',
+         plan_id = COALESCE($1, plan_id),
+         current_period_start = $2,
+         current_period_end = $3
+       WHERE id = $4
+       RETURNING *`,
+      [plan_id || null, startFrom, newEnd, req.params.id]
+    );
+
+    // Log payment record for manual activation
+    await client.query(
+      `INSERT INTO payments (id, subscription_id, station_id, organization_id, amount_kes, status, billing_cycle, plan_name, created_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, 0, 'manual', 'monthly', $4, NOW())`,
+      [req.params.id, sub.station_id, sub.organization_id, notes || 'Manual activation by admin']
+    );
+
+    res.json({ ok: true, subscription: result.rows[0], new_period_end: newEnd });
+  } catch (err) {
+    console.error('[API] activate subscription error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST manually expire/cancel a subscription
+app.post('/api/admin/subscriptions/:id/cancel', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `UPDATE subscriptions SET status = 'cancelled', current_period_end = NOW() WHERE id = $1 RETURNING *`,
+      [req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Subscription not found' });
+    res.json({ ok: true, subscription: result.rows[0] });
+  } catch (err) {
+    console.error('[API] cancel subscription error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET payment summary stats
+app.get('/api/admin/payments/summary', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'completed') AS total_completed,
+        COUNT(*) FILTER (WHERE status = 'pending') AS total_pending,
+        COUNT(*) FILTER (WHERE status = 'failed') AS total_failed,
+        COALESCE(SUM(amount_kes) FILTER (WHERE status = 'completed'), 0) AS total_revenue_kes,
+        COALESCE(SUM(amount_kes) FILTER (WHERE status = 'completed' AND created_at >= date_trunc('month', NOW())), 0) AS revenue_this_month,
+        COUNT(DISTINCT organization_id) FILTER (WHERE status = 'completed') AS paying_orgs
+      FROM payments
+    `);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[API] payments summary error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET subscription plans
+app.get('/api/admin/plans', async (req, res) => {
+  try {
+    const client = await getDb();
+    const result = await client.query(`SELECT * FROM subscription_plans ORDER BY price_monthly ASC`);
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT update a subscription plan price
+app.put('/api/admin/plans/:id', async (req, res) => {
+  const { price_monthly, price_annual, name } = req.body;
+  try {
+    const client = await getDb();
+    const result = await client.query(
+      `UPDATE subscription_plans SET price_monthly=$1, price_annual=$2, name=COALESCE($3, name) WHERE id=$4 RETURNING *`,
+      [price_monthly, price_annual, name || null, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Plan not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = app;
