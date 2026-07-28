@@ -9,6 +9,7 @@ const STATUS_COLORS = {
     active: { bg: '#eafaf1', text: '#1e8449' },
     trial: { bg: '#f3e8ff', text: '#7c3aed' },
     expired: { bg: '#fdecea', text: '#e74c3c' },
+    requested: { bg: '#fff3cd', text: '#856404' }, // NEW — refund_status: 'requested'
 };
 
 export default function Payments({ api, session }) {
@@ -28,6 +29,13 @@ export default function Payments({ api, session }) {
     const [saving, setSaving] = useState(false);
     const [actionMsg, setActionMsg] = useState('');
     const adminEmail = session?.user?.email || '';
+
+    // Refund state
+    const [showRefundModal, setShowRefundModal] = useState(null); // holds the payment being refunded
+    const [refundReason, setRefundReason] = useState('');
+    const [refundConfirmText, setRefundConfirmText] = useState('');
+    const [refunding, setRefunding] = useState(false);
+    const [refundJustCompleted, setRefundJustCompleted] = useState(null); // shows the "credit their account now" reminder
 
     async function loadAll() {
         setLoading(true);
@@ -113,6 +121,41 @@ export default function Payments({ api, session }) {
             loadAll();
         } catch (err) { alert('Failed to update plan'); }
         finally { setSaving(false); }
+    }
+
+    // ── Refund handler ──
+    async function handleRefund() {
+        const payment = showRefundModal;
+        const expectedText = String(parseFloat(payment.amount_kes)); // e.g. "18000" — must match exactly to confirm
+        if (refundConfirmText.trim() !== expectedText) {
+            alert(`Type the exact amount (${expectedText}) to confirm.`);
+            return;
+        }
+        if (!refundReason.trim()) {
+            alert('A reason is required for the audit trail.');
+            return;
+        }
+        setRefunding(true);
+        try {
+            const res = await fetch(`${api}/api/payments/refund`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payment_id: payment.id, reason: refundReason }),
+            });
+            const data = await res.json();
+            if (data.error) { alert(data.error); return; }
+            setShowRefundModal(null);
+            setRefundReason('');
+            setRefundConfirmText('');
+            setRefundJustCompleted(payment); // triggers the "credit their account" reminder banner
+            setActionMsg('Refund requested with Pesapal — see reminder below');
+            setTimeout(() => setActionMsg(''), 3000);
+            loadAll();
+        } catch (err) {
+            alert('Failed to request refund: ' + err.message);
+        } finally {
+            setRefunding(false);
+        }
     }
 
     // ── Generate Invoice PDF ──
@@ -225,6 +268,29 @@ export default function Payments({ api, session }) {
                 </div>
             )}
 
+            {/* Refund reminder banner */}
+            {refundJustCompleted && (
+                <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '10px', padding: '16px 20px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                    <div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#856404', marginBottom: '4px' }}>
+                            ⚠️ Action needed: credit their account now
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#856404', lineHeight: '1.5' }}>
+                            Pesapal's refund to {refundJustCompleted.organization_name || refundJustCompleted.station_name} typically
+                            takes <strong>3–7 business days</strong> to reach their M-Pesa/card. To avoid leaving them without
+                            service in the meantime, go to <strong>Subscriptions</strong> and extend or activate their access now —
+                            the money-back is already in motion on Pesapal's side independently.
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setRefundJustCompleted(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#856404', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             {/* Tabs */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e0e0e0', paddingBottom: '0' }}>
                 {['overview', 'payments', 'subscriptions', 'plans'].map(tab => (
@@ -323,12 +389,32 @@ export default function Payments({ api, session }) {
                                             <td style={{ padding: '12px 16px', fontSize: '13px', color: '#666', textTransform: 'capitalize' }}>{p.billing_cycle}</td>
                                             <td style={{ padding: '12px 16px' }}>
                                                 <span style={{ background: sc.bg, color: sc.text, padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>{p.status?.toUpperCase()}</span>
+                                                {p.refund_status === 'requested' && (
+                                                    <span style={{ background: STATUS_COLORS.requested.bg, color: STATUS_COLORS.requested.text, padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600', marginLeft: '6px' }}>
+                                                        REFUND REQUESTED
+                                                    </span>
+                                                )}
                                             </td>
                                             <td style={{ padding: '12px 16px', fontSize: '12px', color: '#888' }}>{new Date(p.created_at).toLocaleDateString()}</td>
                                             <td style={{ padding: '12px 16px' }}>
-                                                <button onClick={() => generateInvoice(p)} style={{ padding: '5px 10px', background: '#e8f4fd', color: '#1a5276', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '500' }}>
-                                                    Invoice
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    <button onClick={() => generateInvoice(p)} style={{ padding: '5px 10px', background: '#e8f4fd', color: '#1a5276', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '500' }}>
+                                                        Invoice
+                                                    </button>
+                                                    {p.status === 'completed' && p.refund_status !== 'requested' && (
+                                                        <button
+                                                            onClick={() => setShowRefundModal(p)}
+                                                            style={{ padding: '5px 10px', background: '#fdecea', color: '#e74c3c', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '500' }}
+                                                        >
+                                                            Refund
+                                                        </button>
+                                                    )}
+                                                    {p.refund_status === 'requested' && (
+                                                        <span style={{ background: STATUS_COLORS.requested.bg, color: STATUS_COLORS.requested.text, padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600' }}>
+                                                            REFUND REQUESTED
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -491,6 +577,68 @@ export default function Payments({ api, session }) {
                                 {saving ? 'Saving...' : 'Update Plan'}
                             </button>
                             <button onClick={() => setShowEditPlan(null)} style={{ flex: 1, padding: '10px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── REFUND MODAL ── */}
+            {showRefundModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '28px', width: '460px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a2e', marginBottom: '6px' }}>
+                            Refund Payment
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#888', marginBottom: '4px' }}>
+                            {showRefundModal.organization_name || showRefundModal.station_name} · {showRefundModal.plan_name}
+                        </div>
+                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#e74c3c', marginBottom: '16px' }}>
+                            KES {parseFloat(showRefundModal.amount_kes).toLocaleString()}
+                        </div>
+
+                        <div style={{ background: '#fdecea', border: '1px solid #f5c6cb', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#721c24' }}>
+                            This requests a real refund from Pesapal. It cannot be undone from here once submitted.
+                            The actual money-back takes 3–7 business days on Pesapal's side.
+                        </div>
+
+                        <div style={{ marginBottom: '12px' }}>
+                            <label style={labelStyle}>Reason (required — kept for audit trail)</label>
+                            <input
+                                type="text"
+                                value={refundReason}
+                                onChange={e => setRefundReason(e.target.value)}
+                                placeholder="e.g. Client paid twice for the same billing period"
+                                style={inputStyle}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={labelStyle}>
+                                Type <strong>{parseFloat(showRefundModal.amount_kes)}</strong> to confirm
+                            </label>
+                            <input
+                                type="text"
+                                value={refundConfirmText}
+                                onChange={e => setRefundConfirmText(e.target.value)}
+                                placeholder={String(parseFloat(showRefundModal.amount_kes))}
+                                style={inputStyle}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                onClick={handleRefund}
+                                disabled={refunding}
+                                style={{ flex: 1, padding: '10px', background: refunding ? '#aaa' : '#e74c3c', color: '#fff', border: 'none', borderRadius: '8px', cursor: refunding ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '600' }}
+                            >
+                                {refunding ? 'Requesting...' : 'Confirm Refund'}
+                            </button>
+                            <button
+                                onClick={() => { setShowRefundModal(null); setRefundReason(''); setRefundConfirmText(''); }}
+                                style={{ flex: 1, padding: '10px', background: '#f0f0f0', color: '#333', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                            >
                                 Cancel
                             </button>
                         </div>
