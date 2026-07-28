@@ -9,6 +9,7 @@ import AlertConfig from './pages/AlertConfig';
 import ReconciliationConfig from './pages/ReconciliationConfig';
 import Organizations from './pages/Organizations';
 import ATGConfig from './pages/ATGConfig';
+import Payments from './pages/Payments';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -25,6 +26,7 @@ const BASE_NAV = [
   { id: 'alertconfig', icon: '🔔', label: 'Alerts' },
   { id: 'reconconfig', icon: '⚖️', label: 'Reconciliation' },
   { id: 'atgconfig', icon: '📡', label: 'ATG / Gateway' },
+  { id: 'payments', icon: '💳', label: 'Payments' },
 ];
 
 const SUPER_ADMIN_NAV = [
@@ -213,6 +215,7 @@ export default function App() {
         {activeTab === 'alertconfig' && <AlertConfig api={API} session={session} />}
         {activeTab === 'reconconfig' && <ReconciliationConfig api={API} session={session} />}
         {activeTab === 'atgconfig' && <ATGConfig api={API} session={session} />}
+        {activeTab === 'payments' && <Payments api={API} session={session} />}
       </div>
     </div>
   );
