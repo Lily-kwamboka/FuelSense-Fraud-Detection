@@ -25,6 +25,7 @@ import { useToast } from './Toast';
 import AuditLog from './components/AuditLog';
 import useHealthCheck from './useHealthCheck';
 import MaintenanceScreen from './components/MaintenanceScreen';
+import useTankSocket from './useTankSocket';
 
 // deploy-marker: force-fresh-build
 
@@ -56,6 +57,10 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [mfaStatus, setMfaStatus] = useState('checking'); // checking | required | clear
   const { log } = useAuditLog(session, userProfile, activeStation);
+
+  // ── WebSocket hook for real-time tank updates ──
+  // liveTanks automatically updates when the server broadcasts new readings
+  const liveTanks = useTankSocket(activeStation, tanks);
 
   // ── Health check hook ──
   const { status: healthStatus, lastCheckedAt, retryNow } = useHealthCheck();
@@ -348,6 +353,11 @@ function App() {
     return <MfaGate onVerified={() => setMfaStatus('clear')} onSignOut={handleSignOut} />;
   }
 
+  // ── Determine which tank data to display ──
+  // Use liveTanks for the Dashboard tab (real-time updates via WebSocket)
+  // Use tanks for all other tabs (static data from API poll)
+  const displayTanks = activeTab === 'dashboard' ? liveTanks : tanks;
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, fontFamily: 'system-ui, sans-serif' }}>
 
@@ -371,6 +381,13 @@ function App() {
         }
         .fs-summary-card-icon {
           animation: fsIconPulse 2.4s ease-in-out infinite;
+        }
+        .fs-tank-update-flash {
+          animation: fsFlash 0.5s ease;
+        }
+        @keyframes fsFlash {
+          0% { background-color: rgba(76, 175, 80, 0.15); }
+          100% { background-color: transparent; }
         }
       `}</style>
 
@@ -430,6 +447,12 @@ function App() {
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {activeTab === 'dashboard' && (
+              <span style={{ fontSize: '11px', color: colors.subtext, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50' }}></span>
+                Live
+              </span>
+            )}
             {totalOpenAlerts > 0 && (
               <button
                 onClick={() => setActiveTab('alerts')}
@@ -486,20 +509,20 @@ function App() {
                       <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setActiveTab('alerts')}>View alerts →</span>
                     </div>
                   )}
-                  {Array.isArray(tanks) && tanks.filter(t => parseFloat(t.fill_pct) < 20).map(t => (
+                  {Array.isArray(displayTanks) && displayTanks.filter(t => parseFloat(t.fill_pct) < 20).map(t => (
                     <div key={t.id} style={styles.alertRed}>
                       🚨 <strong>Tank {t.tank_number}</strong> critically low — {parseFloat(t.fill_pct).toFixed(1)}%
                     </div>
                   ))}
-                  {Array.isArray(tanks) && tanks.filter(t => parseFloat(t.water_mm) > 50).map(t => (
+                  {Array.isArray(displayTanks) && displayTanks.filter(t => parseFloat(t.water_mm) > 50).map(t => (
                     <div key={t.id} style={styles.alertAmber}>
                       ⚠️ <strong>Tank {t.tank_number}</strong> high water — {t.water_mm}mm
                     </div>
                   ))}
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '8px' : '16px', marginBottom: '24px' }}>
-                    <SummaryCard delay={0} label="Total NSV" value={Array.isArray(tanks) ? tanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
-                    <SummaryCard delay={80} label="Active Tanks" value={Array.isArray(tanks) ? tanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard delay={0} label="Total NSV" value={Array.isArray(displayTanks) ? displayTanks.reduce((s, t) => s + parseFloat(t.nsv_litres || 0), 0).toFixed(0) + ' L' : '0 L'} icon="⛽" color="#4CAF50" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
+                    <SummaryCard delay={80} label="Active Tanks" value={Array.isArray(displayTanks) ? displayTanks.length + ' tanks' : '0 tanks'} icon="🛢" color="#3498db" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard delay={160} label="Deliveries" value={(Array.isArray(deliveries) ? deliveries.length : 0) + ' total'} icon="🚚" color="#f39c12" bg={colors.card} text={colors.text} sub={colors.subtext} mobile={isMobile} />
                     <SummaryCard
                       delay={240}
@@ -514,20 +537,26 @@ function App() {
 
                   <div style={{ ...styles.sectionHeader }}>
                     <div style={{ ...styles.sectionTitle, color: colors.text }}>Live Tank Levels</div>
+                    <span style={{ fontSize: '11px', color: colors.subtext }}>
+                      {liveTanks.length > 0 && '🟢 Real-time updates'}
+                    </span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                    {Array.isArray(tanks) && tanks.map(tank => (
+                    {Array.isArray(displayTanks) && displayTanks.map(tank => (
                       <TankGauge key={tank.id} tank={tank} darkMode={darkMode} />
                     ))}
                   </div>
 
-                  {!isMobile && Array.isArray(tanks) && tanks.length > 0 && (
+                  {!isMobile && Array.isArray(displayTanks) && displayTanks.length > 0 && (
                     <>
                       <div style={{ ...styles.sectionHeader, marginTop: '24px' }}>
                         <div style={{ ...styles.sectionTitle, color: colors.text }}>NSV Trends — Last Hour</div>
+                        <span style={{ fontSize: '11px', color: colors.subtext }}>
+                          {liveTanks.length > 0 && '🔄 Updates in real-time'}
+                        </span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '16px' }}>
-                        {tanks.map(tank => (
+                        {displayTanks.map(tank => (
                           <TankChart key={tank.id} tank={tank} api={API} darkMode={darkMode} />
                         ))}
                       </div>
@@ -546,7 +575,7 @@ function App() {
                   </div>
                   {showForm && (
                     <DeliveryForm
-                      tanks={tanks}
+                      tanks={displayTanks}
                       onSuccess={() => { setShowForm(false); loadData(); }}
                       api={API}
                       stationId={activeStation}
@@ -586,13 +615,13 @@ function App() {
               {activeTab === 'reconciliation' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>Daily Reconciliation</div>
-                  <PumpSalesForm tanks={tanks} api={API} onSuccess={loadData} stationId={activeStation} />
+                  <PumpSalesForm tanks={displayTanks} api={API} onSuccess={loadData} stationId={activeStation} />
                   <ReconciliationTable data={reconciliation} />
                 </div>
               )}
 
               {activeTab === 'shifts' && (
-                <ShiftManager tanks={tanks} darkMode={darkMode} stationId={activeStation} />
+                <ShiftManager tanks={displayTanks} darkMode={darkMode} stationId={activeStation} />
               )}
               {activeTab === 'pump-vs-dip' && (
                 <PumpVsDip darkMode={darkMode} stationId={activeStation} />
@@ -621,7 +650,7 @@ function App() {
               {activeTab === 'reports' && (
                 <div>
                   <div style={{ ...styles.sectionTitle, color: colors.text, marginBottom: '16px' }}>📈 Reports & Exports</div>
-                  <Reports deliveries={deliveries} reconciliation={reconciliation} tanks={tanks} darkMode={darkMode} stationId={activeStation} />
+                  <Reports deliveries={deliveries} reconciliation={reconciliation} tanks={displayTanks} darkMode={darkMode} stationId={activeStation} />
                 </div>
               )}
             </>
