@@ -1,5 +1,5 @@
 /**
- * FuelSense — Alert Recipient Resolver
+ * MafutaFlow Africa — Alert Recipient Resolver
  *
  * Determines WHO should receive an email alert for a given station,
  * based on the role + station assignment of each user in `user_profiles`,

@@ -35,7 +35,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
     ]);
 
     const csv = [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    downloadFile('fuelsense-deliveries.csv', 'text/csv', csv);
+    downloadFile('MafutaFlow Africa-deliveries.csv', 'text/csv', csv);
   }
 
   function exportReconciliationCSV() {
@@ -53,7 +53,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
     ]);
 
     const csv = [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    downloadFile('fuelsense-reconciliation.csv', 'text/csv', csv);
+    downloadFile('MafutaFlow Africa-reconciliation.csv', 'text/csv', csv);
   }
 
   // ── Export to PDF ──────────────────────────────────────────
@@ -67,7 +67,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('FuelSense — Mafuta Salama', 14, 16);
+    doc.text('MafutaFlow Africa — Mafuta Salama', 14, 16);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Fuel Inventory Management Report', 14, 24);
@@ -165,11 +165,11 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text('FuelSense · Mafuta Salama · Nairobi, Kenya', 14, 290);
+      doc.text('MafutaFlow Africa · Mafuta Salama · Nairobi, Kenya', 14, 290);
       doc.text('Page ' + i + ' of ' + pageCount, 180, 290);
     }
 
-    doc.save('fuelsense-report-' + new Date().toISOString().split('T')[0] + '.pdf');
+    doc.save('MafutaFlow Africa-report-' + new Date().toISOString().split('T')[0] + '.pdf');
     setExportLoading(false);
   }
 

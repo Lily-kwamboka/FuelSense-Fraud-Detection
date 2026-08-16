@@ -1,5 +1,5 @@
 /**
- * FuelSense — Alert Recipient Test Script
+ * MafutaFlow Africa — Alert Recipient Test Script
  *
  * Prints out exactly who would receive an email alert for each station,
  * based on the current `user_profiles` (role + station_id) and Supabase

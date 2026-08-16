@@ -1,5 +1,5 @@
 /**
- * FuelSense - ATG Simulator
+ * MafutaFlow Africa - ATG Simulator
  * Phase 2, Step 1
  *
  * Simulates a Veeder-Root TLS ATG console over TCP.
@@ -191,7 +191,7 @@ const server = net.createServer((socket) => {
 server.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('================================================');
-    console.log('  FuelSense ATG Simulator  v1.0');
+    console.log('  MafutaFlow Africa ATG Simulator  v1.0');
     console.log('  Listening on TCP port ' + PORT);
     console.log('------------------------------------------------');
     console.log('  Tank 1 - PETROL   1450mm  18.5C  12mm water');

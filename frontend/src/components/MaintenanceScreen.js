@@ -34,9 +34,9 @@ export default function MaintenanceScreen({ status, lastCheckedAt, retryNow }) {
                 </div>
                 <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '20px' }}>
                     {isOffline ? (
-                        <>Check your internet connection. FuelSense will reconnect automatically the moment you're back online.</>
+                        <>Check your internet connection. MafutaFlow Africa will reconnect automatically the moment you're back online.</>
                     ) : (
-                        <>FuelSense is temporarily unavailable — this is on our side, not yours. Your data is safe, and we're already retrying automatically.</>
+                        <>MafutaFlow Africa is temporarily unavailable — this is on our side, not yours. Your data is safe, and we're already retrying automatically.</>
                     )}
                 </div>
 
@@ -52,7 +52,7 @@ export default function MaintenanceScreen({ status, lastCheckedAt, retryNow }) {
                 </button>
 
                 <div style={{ fontSize: '11px', color: '#bbb', marginTop: '24px' }}>
-                    FuelSense · Mafuta Salama · Nairobi, Kenya
+                    MafutaFlow Africa · Mafuta Salama · Nairobi, Kenya
                 </div>
             </div>
 

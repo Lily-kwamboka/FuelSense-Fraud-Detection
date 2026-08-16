@@ -16,11 +16,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
-  'https://fuelsense-dashboard.vercel.app',
+  'https://MafutaFlow Africa-dashboard.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
-  'https://fuelsense-fraud-detection.onrender.com'
+  'https://MafutaFlow Africa-fraud-detection.onrender.com'
 ];
 
 app.use(cors({
@@ -35,6 +35,43 @@ app.use(express.json());
 
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PATCH NOTES for api.js — real-time tank updates via WebSocket
+// ═══════════════════════════════════════════════════════════════════════════
+
+// STEP 1 — install socket.io on the backend:
+//   npm install socket.io
+//
+// socket.io (rather than the raw 'ws' library) is worth using here because
+// it auto-reconnects on network drops and falls back to polling if a raw
+// WebSocket connection can't be established (some corporate/mobile networks
+// block them) — the same "never leave the user hanging" philosophy as the
+// maintenance screen, applied here too.
+
+// STEP 2 — near the top of api.js, after `const app = express();`, add:
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' }, // tighten this to your actual FRONTEND_URL in production
+});
+
+io.on('connection', (socket) => {
+  console.log('[WS] Client connected:', socket.id);
+
+  // Clients join a "room" per station so a reading from Station A never
+  // gets broadcast to a browser only watching Station B.
+  socket.on('subscribe-station', (stationId) => {
+    socket.join(`station:${stationId}`);
+    console.log('[WS]', socket.id, 'subscribed to station', stationId);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('[WS] Client disconnected:', socket.id);
+  });
+});
 
 // ── DB ────────────────────────────────────────────────────────────────────────
 const pool = new Pool({ connectionString: DATABASE_URL, max: 10 });
@@ -703,7 +740,7 @@ app.post('/api/payments/initiate', async (req, res) => {
       id: paymentId,
       currency: 'KES',
       amount: parseFloat(amount),
-      description: isTest ? 'FuelSense Test Payment' : `FuelSense ${plan.name} - ${billing_cycle} subscription`,
+      description: isTest ? 'MafutaFlow Africa Test Payment' : `MafutaFlow Africa ${plan.name} - ${billing_cycle} subscription`,
       callback_url: process.env.FRONTEND_URL + '/?tab=payment-result',
       notification_id: ipnId,
       billing_address: {
@@ -744,6 +781,7 @@ app.get('/api/payments/status', async (req, res) => {
 
   try {
     const client = await getDb();
+    const pesapal = require('./pesapal');
 
     const payRes = await client.query(
       `SELECT status FROM payments WHERE pesapal_order_id = $1`, [orderTrackingId]
@@ -755,7 +793,6 @@ app.get('/api/payments/status', async (req, res) => {
       return res.json({ status: 'Failed' });
     }
 
-    const pesapal = require('./pesapal');
     const live = await pesapal.getTransactionStatus(orderTrackingId);
     res.json({ status: live.payment_status_description });
   } catch (err) {
@@ -928,7 +965,7 @@ app.post('/api/payments/test', async (req, res) => {
 
     const pesapalRes = await pesapal.submitOrder({
       id: paymentId, currency: 'KES', amount: parseFloat(amount),
-      description: `FuelSense Test Payment - KES ${amount}`,
+      description: `MafutaFlow Africa Test Payment - KES ${amount}`,
       callback_url: process.env.FRONTEND_URL + '/payment-success',
       notification_id: ipnId,
       billing_address: {
@@ -991,7 +1028,7 @@ app.post('/api/admin/organizations', async (req, res) => {
         });
 
         const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(owner_email, {
-          redirectTo: process.env.FRONTEND_URL || 'https://fuelsense-dashboard.vercel.app',
+          redirectTo: process.env.FRONTEND_URL || 'https://MafutaFlow Africa-dashboard.vercel.app',
         });
 
         if (error) {
@@ -1349,11 +1386,45 @@ app.delete('/api/admin/suppliers/:id', async (req, res) => {
   }
 });
 
-// ── Start server ──────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log('[API] FuelSense API running on port ' + PORT);
-  console.log('[API] Multi-tenant mode: enabled');
-});
+// ════════════════════════════════════════════════════════════════════════════
+// ATG READINGS & SCHEDULER — with WebSocket broadcast
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Scheduler integration ─────────────────────────────────────────────────────
+// The scheduler's pollCycle() function now broadcasts real-time updates via io.to()
+// We need to expose io to the scheduler module
+const scheduler = require('./scheduler');
+// Pass io to scheduler for broadcasting
+if (scheduler && typeof scheduler.setIO === 'function') {
+  scheduler.setIO(io);
+} else {
+  // Fallback: patch the scheduler's pollCycle function to broadcast
+  const originalPollCycle = scheduler.pollCycle;
+  if (originalPollCycle) {
+    scheduler.pollCycle = async function (...args) {
+      const result = await originalPollCycle.apply(this, args);
+      // Broadcast after saving readings
+      if (result && result.tank && result.reading && result.volumes) {
+        const t = result.tank;
+        const reading = result.reading;
+        const volumes = result.volumes;
+        io.to(`station:${t.station_id}`).emit('tank-reading', {
+          tank_id: t.id,
+          tank_number: t.tank_number,
+          fuel_type: t.fuel_type,
+          innage_mm: reading.innageMm,
+          water_mm: reading.waterMm,
+          temperature_c: reading.tempC,
+          nsv_litres: volumes.nsv_litres,
+          vcf: volumes.vcf,
+          fill_pct: (volumes.nsv_litres / parseFloat(t.capacity_litres)) * 100,
+          recorded_at: new Date().toISOString(),
+        });
+      }
+      return result;
+    };
+  }
+}
 
 // ── Cron jobs ─────────────────────────────────────────────────────────────────
 async function checkExpiredSubscriptions() {
@@ -1385,7 +1456,7 @@ async function sendRenewalReminder(orgId, daysLeft, userEmail, planName) {
   if (!resend) return;
   try {
     await resend.emails.send({
-      from: 'FuelSense <noreply@fuelsense.com>', to: userEmail,
+      from: 'MafutaFlow Africa <noreply@MafutaFlow Africa.com>', to: userEmail,
       subject: `Your ${planName} plan renews in ${daysLeft} days`,
       html: `<p>Your <strong>${planName}</strong> plan renews in <strong>${daysLeft} days</strong>. <a href="${process.env.FRONTEND_URL}/?tab=pricing">Manage subscription</a></p>`
     });
@@ -1566,10 +1637,14 @@ if (process.env.USE_ATG_SIMULATOR === 'true') {
   }
 }
 
-// ── Scheduler ─────────────────────────────────────────────────────────────────
+// ── Scheduler start ──────────────────────────────────────────────────────────
 setTimeout(() => {
   try {
-    require('./scheduler');
+    // Pass io to scheduler for broadcasting
+    const schedulerModule = require('./scheduler');
+    if (schedulerModule && typeof schedulerModule.startScheduler === 'function') {
+      schedulerModule.startScheduler(io);
+    }
     console.log('[API] Scheduler started ✓');
   } catch (err) {
     console.error('[API] Failed to start scheduler:', err.message);
@@ -1907,7 +1982,10 @@ if (process.env.USE_ATG_SIMULATOR === 'true') {
 // ── Scheduler (duplicate) ────────────────────────────────────────────────────
 setTimeout(() => {
   try {
-    require('./scheduler');
+    const schedulerModule = require('./scheduler');
+    if (schedulerModule && typeof schedulerModule.startScheduler === 'function') {
+      schedulerModule.startScheduler(io);
+    }
     console.log('[API] Scheduler started ✓');
   } catch (err) {
     console.error('[API] Failed to start scheduler:', err.message);
@@ -2085,6 +2163,14 @@ app.put('/api/admin/plans/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Plan not found' });
     res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// STEP 3 — replace `app.listen(PORT, ...)` near the bottom of the file with
+// `server.listen(...)` instead, since the HTTP server now wraps both Express
+// AND the WebSocket layer on the same port:
+server.listen(PORT, () => {
+  console.log('[API] MafutaFlow Africa API (HTTP + WebSocket) running on port ' + PORT);
+  console.log('[API] Multi-tenant mode: enabled');
 });
 
 module.exports = app;

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// FuelSense - Alerts Engine
+// MafutaFlow Africa - Alerts Engine
 // Phase 5
 //
 // Creates, retrieves, and manages alerts.

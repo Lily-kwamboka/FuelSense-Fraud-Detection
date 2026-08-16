@@ -1,5 +1,5 @@
 /**
- * FuelSense - Database Setup
+ * MafutaFlow Africa - Database Setup
  * Phase 1 - Schema & Seed Data
  *
  * Creates all 6 tables, indexes, and constraints.
@@ -173,7 +173,7 @@ async function seed(stationId, tank1Id, tank2Id) {
     await db.query(
         `INSERT INTO stations (id, name, location, timezone)
      VALUES ($1, $2, $3, $4)`,
-        [stationId, 'FuelSense Dev Station', '1 Test Road, Dev City', 'Africa/Nairobi']
+        [stationId, 'MafutaFlow Africa Dev Station', '1 Test Road, Dev City', 'Africa/Nairobi']
     );
     console.log('[setup] Station created:', stationId);
 
@@ -247,7 +247,7 @@ async function seed(stationId, tank1Id, tank2Id) {
 (async () => {
     console.log('');
     console.log('================================================');
-    console.log('  FuelSense Database Setup');
+    console.log('  MafutaFlow Africa Database Setup');
     console.log('  DB: ' + process.env.DATABASE_URL);
     console.log('================================================');
     console.log('');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
 // Roles that MUST complete MFA before accessing the dashboard
@@ -87,7 +87,7 @@ export default function Login() {
   async function startMfaEnrollment() {
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
-      friendlyName: 'FuelSense Authenticator',
+      friendlyName: 'MafutaFlow Africa Authenticator',
     });
     if (error) { setError('Failed to set up MFA: ' + error.message); return; }
     setFactorId(data.id);
@@ -314,7 +314,7 @@ export default function Login() {
             <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔑</div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Two-Factor Verification</div>
             <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
-              Open your authenticator app and enter the 6-digit code for FuelSense.
+              Open your authenticator app and enter the 6-digit code for MafutaFlow Africa.
             </div>
           </div>
           {errBox}
@@ -348,8 +348,8 @@ export default function Login() {
     <div style={card}>
       <div style={box}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '8px' }}>⛽</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: dark }}>FuelSense</div>
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '56px', marginBottom: '8px' }} />
+          <div style={{ fontSize: '24px', fontWeight: '700', color: dark }}>MafutaFlow Africa</div>
           <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>Fuel Inventory Management</div>
         </div>
 
@@ -402,7 +402,7 @@ export default function Login() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: '#bbb' }}>
-          FuelSense · Mafuta Salama · Nairobi, Kenya
+          MafutaFlow Africa · Mafuta Salama · Nairobi, Kenya
         </div>
       </div>
     </div>

@@ -325,7 +325,7 @@ function App() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⛽</div>
-          <div style={{ color: '#fff', fontSize: '16px', fontWeight: '500' }}>Loading FuelSense...</div>
+          <div style={{ color: '#fff', fontSize: '16px', fontWeight: '500' }}>Loading MafutaFlow Africa...</div>
           <div style={{ color: '#4CAF50', fontSize: '12px', marginTop: '8px' }}>Mafuta Salama</div>
         </div>
       </div>
@@ -684,7 +684,7 @@ function MfaGate({ onVerified, onSignOut }) {
         // No verified factor yet — start enrollment instead of signing out.
         const { data, error: enrollErr } = await supabase.auth.mfa.enroll({
           factorType: 'totp',
-          friendlyName: 'FuelSense Authenticator',
+          friendlyName: 'MafutaFlow Africa Authenticator',
         });
         if (enrollErr) { setError('Failed to set up MFA: ' + enrollErr.message); return; }
         setFactorId(data.id);
@@ -809,7 +809,7 @@ function MfaGate({ onVerified, onSignOut }) {
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔑</div>
           <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Two-Factor Verification</div>
           <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
-            Open your authenticator app and enter the 6-digit code for FuelSense.
+            Open your authenticator app and enter the 6-digit code for MafutaFlow Africa.
           </div>
         </div>
         {errBox}

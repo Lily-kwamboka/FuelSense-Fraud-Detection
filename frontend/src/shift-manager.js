@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// FuelSense - Shift Manager
+// MafutaFlow Africa - Shift Manager
 // Phase 5
 //
 // Manages shift opening/closing, dip vs pump comparison,

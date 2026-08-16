@@ -39,7 +39,7 @@ async function runAlertCheck() {
     async function markAlertSent(alertKey) {
       await db.query(
         `INSERT INTO audit_log (user_email, user_role, action, entity_type)
-         VALUES ('system@fuelsense', 'system', $1, 'alert')`,
+         VALUES ('system@MafutaFlow Africa', 'system', $1, 'alert')`,
         ['ALERT_' + alertKey]
       );
     }
@@ -133,7 +133,7 @@ async function runAlertCheck() {
         console.log('[ALERT-CHECK] Flagged delivery:', delivery.bol_number, '->', recipients.join(', '));
         await alertDeliveryFlagged(delivery, stationName, recipients);
         // Send SMS for flagged delivery
-        const smsMessage = `🚛 FUELSENSE: Delivery ${delivery.bol_number} flagged! Variance: ${delivery.variance_litres || 0}L. Check dashboard.`;
+        const smsMessage = `🚛 MafutaFlow Africa: Delivery ${delivery.bol_number} flagged! Variance: ${delivery.variance_litres || 0}L. Check dashboard.`;
         await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
         await markAlertSent(key);
       }
@@ -166,7 +166,7 @@ async function runAlertCheck() {
         );
         // Send SMS for high variance
         const isNegative = parseFloat(recon.variance_litres) < 0;
-        const smsMessage = `📊 FUELSENSE: Tank ${recon.tank_number} variance ${recon.variance_litres > 0 ? '+' : ''}${Math.abs(parseFloat(recon.variance_litres)).toFixed(0)}L. ${isNegative ? 'Possible loss!' : 'Check records.'}`;
+        const smsMessage = `📊 MafutaFlow Africa: Tank ${recon.tank_number} variance ${recon.variance_litres > 0 ? '+' : ''}${Math.abs(parseFloat(recon.variance_litres)).toFixed(0)}L. ${isNegative ? 'Possible loss!' : 'Check records.'}`;
         await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
         await markAlertSent(key);
       }

@@ -204,7 +204,7 @@ async function getTransactionStatus(orderTrackingId) {
 // typically takes 3-7 business days depending on the channel. Use this to
 // KICK OFF a refund; pair it with an immediate internal account credit
 // (extend subscription / mark prepaid) so the client isn't left waiting on
-// the bank rail before their FuelSense access reflects the correction.
+// the bank rail before their MafutaFlow Africa access reflects the correction.
 async function requestRefund(orderTrackingId, amount, remarks) {
   const token = await getToken();
 
@@ -220,7 +220,7 @@ async function requestRefund(orderTrackingId, amount, remarks) {
     body: JSON.stringify({
       confirmation_code: orderTrackingId,
       amount: parseFloat(amount).toFixed(2),
-      username: 'FuelSense Admin',
+      username: 'MafutaFlow Africa Admin',
       remarks: remarks || 'Duplicate payment reversal',
     }),
   });

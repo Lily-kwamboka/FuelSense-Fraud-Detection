@@ -1,0 +1,20 @@
+name = "fuelsense-backend"
+main = "worker.js"
+compatibility_date = "2026-08-02"
+
+[[containers]]
+class_name = "MafutaFlowAfricaContainer"
+image = "./Dockerfile"
+max_instances = 3
+
+[[durable_objects.bindings]]
+name = "MAFUTAFLOW_CONTAINER"
+class_name = "MafutaFlowAfricaContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FuelSenseContainer"]
+
+[[migrations]]
+tag = "v2"
+renamed_classes = [{ from = "FuelSenseContainer", to = "MafutaFlowAfricaContainer" }]

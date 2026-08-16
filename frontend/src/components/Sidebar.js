@@ -47,8 +47,9 @@ function Sidebar({ activeTab, setActiveTab, darkMode, setDarkMode, user, onSignO
       <div style={styles.logoSection}>
         <Fuel size={26} color="#4CAF50" style={styles.logoIcon} />
         <div>
-          <div style={styles.logoTitle}>FuelSense</div>
-          <div style={styles.logoSub}>Mafuta Salama</div>
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '28px', marginBottom: '2px' }} />
+          <div style={styles.logoTitle}>MafutaFlow Africa</div>
+          <div style={styles.logoSub}>Accountability Behind Every Litre</div>
         </div>
       </div>
 

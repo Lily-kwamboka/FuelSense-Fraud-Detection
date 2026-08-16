@@ -1,5 +1,5 @@
 /**
- * FuelSense — Email Alerts via Resend + SMS via Africa's Talking
+ * MafutaFlow Africa — Email Alerts via Resend + SMS via Africa's Talking
  * Sends professional HTML emails for critical events + SMS for urgent alerts:
  * - Low stock warning
  * - High water level
@@ -91,7 +91,7 @@ async function sendSMS(phoneNumber, message) {
       to: [formattedNumber],
       message: truncatedMsg,
       enqueue: true,
-      from: process.env.AT_SENDER_ID || 'FuelSense'
+      from: process.env.AT_SENDER_ID || 'MafutaFlow Africa'
     };
 
     const response = await sms.send(options);
@@ -158,9 +158,9 @@ async function sendAlert(subject, htmlBody, useCooldown = false, alertKey = null
   if (gmailTransporter) {
     try {
       const info = await gmailTransporter.sendMail({
-        from: `"FuelSense Alerts" <${process.env.GMAIL_USER}>`,
+        from: `"MafutaFlow Africa Alerts" <${process.env.GMAIL_USER}>`,
         to: toList.join(', '),
-        subject: `[FuelSense] ${subject}`,
+        subject: `[MafutaFlow Africa] ${subject}`,
         html: wrapHTML(subject, htmlBody),
       });
       console.log('[EMAIL] Alert sent via Gmail:', subject, '→', toList.join(', '), '(', info.messageId, ')');
@@ -182,7 +182,7 @@ async function sendAlert(subject, htmlBody, useCooldown = false, alertKey = null
     const { data, error } = await resend.emails.send({
       from: FROM,
       to: toList,
-      subject: `[FuelSense] ${subject}`,
+      subject: `[MafutaFlow Africa] ${subject}`,
       html: wrapHTML(subject, htmlBody),
     });
 
@@ -214,7 +214,7 @@ function wrapHTML(title, content) {
     <!-- Header -->
     <div style="background:#1a1a2e;border-radius:12px 12px 0 0;padding:24px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">⛽</div>
-      <div style="color:#fff;font-size:20px;font-weight:700;">FuelSense</div>
+      <div style="color:#fff;font-size:20px;font-weight:700;">MafutaFlow Africa</div>
       <div style="color:#4CAF50;font-size:12px;margin-top:4px;">Mafuta Salama · Nairobi, Kenya</div>
     </div>
 
@@ -224,16 +224,16 @@ function wrapHTML(title, content) {
       ${content}
       <hr style="border:none;border-top:1px solid #f0f0f0;margin:24px 0;">
       <p style="color:#999;font-size:12px;margin:0;">
-        This is an automated alert from FuelSense.
+        This is an automated alert from MafutaFlow Africa.
         Log in to your dashboard at
-        <a href="https://fuelsense-dashboard.vercel.app" style="color:#1a1a2e;">fuelsense-dashboard.vercel.app</a>
+        <a href="https://MafutaFlow Africa-dashboard.vercel.app" style="color:#1a1a2e;">MafutaFlow Africa-dashboard.vercel.app</a>
         to view details.
       </p>
     </div>
 
     <!-- Footer -->
     <div style="text-align:center;padding:16px;color:#999;font-size:11px;">
-      FuelSense · Mafuta Salama · © ${new Date().getFullYear()}
+      MafutaFlow Africa · Mafuta Salama · © ${new Date().getFullYear()}
     </div>
   </div>
 </body>
@@ -251,7 +251,7 @@ async function sendCriticalAlert(tankNumber, fuelType, fillPct, litres, alertTyp
   await alertLowStock(tankNumber, fuelType, fillPct, litres, stationName, recipients);
 
   // Send SMS
-  const smsMessage = `🚨 FUELSENSE: Tank ${tankNumber} ${fuelType} at ${fillPct}%! ${Math.round(litres)}L left. REFILL NOW!`;
+  const smsMessage = `🚨 MafutaFlow Africa: Tank ${tankNumber} ${fuelType} at ${fillPct}%! ${Math.round(litres)}L left. REFILL NOW!`;
   await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
 }
 
@@ -263,7 +263,7 @@ async function sendOfflineAlert(tankNumber, minutesAgo, stationName = 'Station',
 
   if (shouldSendAlert(alertKey, 60)) {
     const emailMessage = `Tank ${tankNumber} has not sent a reading for ${minutesAgo} minutes.`;
-    const smsMessage = `🔴 FUELSENSE: Tank ${tankNumber} offline for ${minutesAgo} min! Check ATG connection.`;
+    const smsMessage = `🔴 MafutaFlow Africa: Tank ${tankNumber} offline for ${minutesAgo} min! Check ATG connection.`;
 
     // Send email
     const content = `
@@ -329,7 +329,7 @@ async function alertLowStock(tankNumber, fuelType, fillPct, nsvLitres, stationNa
 
   // Send SMS for critical low stock (<10%)
   if (isCritical) {
-    const smsMessage = `🚨 FUELSENSE CRITICAL: Tank ${tankNumber} ${fuelType} at ${fillPct}%! ${Math.round(nsvLitres)}L left. REFILL NOW!`;
+    const smsMessage = `🚨 MafutaFlow Africa CRITICAL: Tank ${tankNumber} ${fuelType} at ${fillPct}%! ${Math.round(nsvLitres)}L left. REFILL NOW!`;
     await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
   }
 }
@@ -366,7 +366,7 @@ async function alertHighWater(tankNumber, fuelType, waterMm, stationName = 'Stat
   await sendAlert(`🚨 High Water Level — Tank ${tankNumber}`, content, true, alertKey, recipients);
 
   // Send SMS for high water
-  const smsMessage = `💧 FUELSENSE: Tank ${tankNumber} has ${waterMm}mm water! Inspect immediately.`;
+  const smsMessage = `💧 MafutaFlow Africa: Tank ${tankNumber} has ${waterMm}mm water! Inspect immediately.`;
   await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
 }
 
@@ -410,7 +410,7 @@ async function alertFlaggedDelivery(bolNumber, variance, fuelType, stationName =
   await sendAlert(`🚨 Delivery Flagged — ${bolNumber}`, content, true, alertKey, recipients);
 
   // Send SMS for flagged delivery
-  const smsMessage = `🚛 FUELSENSE: Delivery ${bolNumber} flagged! Variance: ${varianceLitres.toFixed(0)}L. Check dashboard.`;
+  const smsMessage = `🚛 MafutaFlow Africa: Delivery ${bolNumber} flagged! Variance: ${varianceLitres.toFixed(0)}L. Check dashboard.`;
   await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
 }
 
@@ -439,7 +439,7 @@ async function alertReadingGap(message, stationName = 'Station', recipients = nu
   await sendAlert('🔴 ATG Offline — Reading Gap Detected', content, true, alertKey, recipients);
 
   // Send SMS for ATG offline
-  const smsMessage = `🔴 FUELSENSE: ${message.substring(0, 140)}`;
+  const smsMessage = `🔴 MafutaFlow Africa: ${message.substring(0, 140)}`;
   await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
 }
 
@@ -486,7 +486,7 @@ async function alertDailyVariance(tankNumber, fuelType, varianceLitres, date, st
   await sendAlert(`📋 Daily Variance Alert — Tank ${tankNumber}`, content, true, alertKey, recipients);
 
   // Send SMS for variance
-  const smsMessage = `📊 FUELSENSE: Tank ${tankNumber} variance ${varianceLitres > 0 ? '+' : ''}${Math.abs(varianceLitres).toFixed(0)}L. ${isNegative ? 'Possible loss!' : 'Check records.'}`;
+  const smsMessage = `📊 MafutaFlow Africa: Tank ${tankNumber} variance ${varianceLitres > 0 ? '+' : ''}${Math.abs(varianceLitres).toFixed(0)}L. ${isNegative ? 'Possible loss!' : 'Check records.'}`;
   await sendSMS(process.env.ALERT_PHONE_NUMBER, smsMessage);
 }
 
@@ -503,7 +503,7 @@ async function sendTestAlert(recipients = null) {
 
   const content = `
     <div style="background:#d4edda;border:1px solid #c3e6cb;border-radius:8px;padding:16px;margin-bottom:16px;">
-      <strong style="color:#155724;">✅ This is a test email from FuelSense</strong>
+      <strong style="color:#155724;">✅ This is a test email from MafutaFlow Africa</strong>
     </div>
     <p style="color:#1a1a2e;font-size:13px;">If you received this, email notifications are working correctly!</p>
     <p style="color:#1a1a2e;font-size:13px;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
@@ -529,7 +529,7 @@ async function sendTestSMS() {
     return false;
   }
 
-  const testMessage = "🧪 FUELSENSE TEST: This is a test SMS from your FuelSense alert system. If you receive this, SMS alerts are working!";
+  const testMessage = "🧪 MafutaFlow Africa TEST: This is a test SMS from your MafutaFlow Africa alert system. If you receive this, SMS alerts are working!";
   await sendSMS(phoneNumber, testMessage);
   console.log('[SMS] Test SMS sent to', phoneNumber);
   return true;

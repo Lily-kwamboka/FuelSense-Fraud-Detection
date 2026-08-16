@@ -163,7 +163,7 @@ export default function ResetPassword() {
                     <div style={{ fontSize: '40px', marginBottom: '8px' }}>⛽</div>
                     <div style={{ fontSize: '20px', fontWeight: '700', color: dark }}>Set a New Password</div>
                     <div style={{ fontSize: '13px', color: '#666', marginTop: '8px', lineHeight: '1.5' }}>
-                        Choose a new password for your FuelSense account.
+                        Choose a new password for your MafutaFlow Africa account.
                     </div>
                 </div>
 
@@ -189,7 +189,7 @@ export default function ResetPassword() {
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '11px', color: '#bbb' }}>
-                    FuelSense · Mafuta Salama · Nairobi, Kenya
+                    MafutaFlow Africa · Mafuta Salama · Nairobi, Kenya
                 </div>
             </div>
         </div>

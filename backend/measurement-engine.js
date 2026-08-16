@@ -1,5 +1,5 @@
 /**
- * FuelSense - Measurement Engine
+ * MafutaFlow Africa - Measurement Engine
  * Phase 3
  *
  * Converts raw ATG probe readings into Net Standard Volume (NSV) at 15C.
@@ -151,7 +151,7 @@ if (require.main === module) {
     (async () => {
         console.log('');
         console.log('================================================');
-        console.log('  FuelSense Measurement Engine - Unit Tests');
+        console.log('  MafutaFlow Africa Measurement Engine - Unit Tests');
         console.log('================================================');
         console.log('');
 

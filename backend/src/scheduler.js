@@ -240,7 +240,7 @@ async function start() {
     process.exit(1);
   }
 
-  console.log('[SCHEDULER] Starting FuelSense scheduler...');
+  console.log('[SCHEDULER] Starting MafutaFlow Africa scheduler...');
   console.log('[SCHEDULER] Poll interval: ' + (POLL_INTERVAL_MS / 1000) + 's');
 
   try {

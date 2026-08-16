@@ -14,7 +14,7 @@
 // forget," but "never forget where you left off."
 // ═══════════════════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = 'fuelsense_pending_payment';
+const STORAGE_KEY = 'MafutaFlow Africa_pending_payment';
 
 // Call this the MOMENT an idempotency key is generated — before the fetch
 // to /api/payments/initiate even fires. If the request never completes

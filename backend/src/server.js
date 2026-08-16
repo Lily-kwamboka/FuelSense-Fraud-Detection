@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('[CLOUD] Starting FuelSense Simulator Service...');
+console.log('[CLOUD] Starting MafutaFlow Africa Simulator Service...');
 console.log('[CLOUD] Node version:', process.version);
 console.log('[CLOUD] Environment:', process.env.NODE_ENV || 'development');
 
@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'running', 
     timestamp: new Date().toISOString(),
-    service: 'fuelsense-simulator',
+    service: 'MafutaFlow Africa-simulator',
     uptime: process.uptime()
   });
 });

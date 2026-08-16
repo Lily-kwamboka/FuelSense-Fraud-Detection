@@ -589,7 +589,7 @@ app.post('/api/payments/initiate', async (req, res) => {
       id: paymentId,
       currency: 'KES',
       amount: parseFloat(amount),
-      description: isTest ? 'FuelSense Test Payment' : `FuelSense ${plan.name} - ${billing_cycle} subscription`,
+      description: isTest ? 'MafutaFlow Africa Test Payment' : `MafutaFlow Africa ${plan.name} - ${billing_cycle} subscription`,
       callback_url: process.env.FRONTEND_URL + '/payment-success',
       notification_id: ipnId,
       billing_address: {
@@ -655,7 +655,7 @@ app.post('/api/payments/test', async (req, res) => {
       id: paymentId,
       currency: 'KES',
       amount: parseFloat(amount),
-      description: `FuelSense Test Payment - KES ${amount}`,
+      description: `MafutaFlow Africa Test Payment - KES ${amount}`,
       callback_url: process.env.FRONTEND_URL + '/payment-success',
       notification_id: ipnId,
       billing_address: {
@@ -776,7 +776,7 @@ app.get('/api/health', (req, res) => {
 
 // ── Start server ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log('[API] FuelSense API running on port ' + PORT);
+  console.log('[API] MafutaFlow Africa API running on port ' + PORT);
 });
 
 // ── Ingestion Scheduler ───────────────────────────────────────────────────

@@ -220,7 +220,7 @@ function Pricing({ api, activeStation, session, darkMode }) {
             <div style={{ background: '#1a1a2e', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>🏢 Enterprise Plan Enquiry</div>
-                <div style={{ fontSize: '12px', color: '#4CAF50', marginTop: '2px' }}>Mafuta Salama · FuelSense</div>
+                <div style={{ fontSize: '12px', color: '#4CAF50', marginTop: '2px' }}>Mafuta Salama · MafutaFlow Africa</div>
               </div>
               <button onClick={() => setShowContact(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px' }}>✕</button>
             </div>

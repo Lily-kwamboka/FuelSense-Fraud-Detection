@@ -23,7 +23,7 @@ function AccessDenied({ darkMode, stationName }) {
         Your subscription for <strong>{stationName}</strong> has expired.
       </p>
       <p style={{ color: colors.subtext, fontSize: '14px', marginBottom: '20px' }}>
-        Please renew your subscription to continue using FuelSense features.
+        Please renew your subscription to continue using MafutaFlow Africa features.
       </p>
       <button
         onClick={() => window.location.href = '/?tab=pricing'}

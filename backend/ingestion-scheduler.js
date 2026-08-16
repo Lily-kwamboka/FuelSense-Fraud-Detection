@@ -1,5 +1,5 @@
 /**
- * FuelSense - Ingestion Scheduler
+ * MafutaFlow Africa - Ingestion Scheduler
  * Phase 2, Step 4 & 5 + Phase 3 wired in
  */
 
@@ -199,7 +199,7 @@ async function runPollCycle() {
 // ---------------------------------------------------------------------------
 async function start() {
     console.log('\n================================================');
-    console.log('  FuelSense Ingestion Scheduler');
+    console.log('  MafutaFlow Africa Ingestion Scheduler');
     console.log('  Poll interval: ' + (POLL_INTERVAL_MS / 1000) + 's');
     console.log('  DB: ' + DATABASE_URL);
     console.log('================================================\n');

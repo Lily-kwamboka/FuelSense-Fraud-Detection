@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import './LandingPage.css';
 
-const DEMO_HREF = 'mailto:kwambokalilian59@gmail.com?subject=Book%20a%20FuelSense%20Demo';
+const DEMO_HREF = 'mailto:kwambokalilian59@gmail.com?subject=Book%20a%20MafutaFlow Africa%20Demo';
 
 const pains = [
   { text: 'Delivery variance appears after the truck has already left.', severity: 78 },
@@ -172,7 +172,8 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
 
         <div className="landing-hero-copy">
           <div className="landing-eyebrow">Fuel operations intelligence</div>
-          <h1>FuelSense</h1>
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '120px', marginBottom: '16px' }} />
+            <h1>MafutaFlow Africa</h1>
           <p className="landing-hero-line">Stop fuel loss before it becomes a report.</p>
           <p className="landing-hero-sub">
             Real-time tank monitoring, delivery reconciliation, pump-vs-dip checks,
@@ -211,7 +212,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           <span>System alerts detected</span>
           <h2>Fuel loss rarely announces itself.</h2>
           <p>
-            FuelSense is built for operators who need to know what happened, when it
+            MafutaFlow Africa is built for operators who need to know what happened, when it
             happened, and who needs to act next.
           </p>
         </div>
@@ -322,7 +323,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
           <span>Pricing</span>
           <h2>Public pricing, private onboarding.</h2>
           <p>
-            FuelSense stays sales-led so every station, user, and tank is set up correctly
+            MafutaFlow Africa stays sales-led so every station, user, and tank is set up correctly
             before the team gets access.
           </p>
         </div>
@@ -389,7 +390,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
         <div className="landing-final-cta-bg" aria-hidden="true" />
         <div className="landing-final-cta-inner">
           <span>Ready to know where every litre went?</span>
-          <h2>Bring FuelSense into the conversation before the next variance.</h2>
+          <h2>Bring MafutaFlow Africa into the conversation before the next variance.</h2>
           <div className="landing-actions">
             <a className="landing-primary landing-primary--shimmer" href={demoHref}>
               Book Demo
@@ -761,7 +762,7 @@ function HeroTankMonitor() {
 /* Live station operating logs list */
 function OperationsMonitor() {
   return (
-    <div className="landing-console reveal" aria-label="FuelSense live operations log">
+    <div className="landing-console reveal" aria-label="MafutaFlow Africa live operations log">
       <div className="landing-console-titlebar">
         <div className="landing-console-dots">
           <span className="dot dot--red" />

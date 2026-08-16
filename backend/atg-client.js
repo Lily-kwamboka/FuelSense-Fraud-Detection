@@ -1,5 +1,5 @@
 /**
- * FuelSense - ATG Client
+ * MafutaFlow Africa - ATG Client
  * Phase 2, Step 2
  *
  * Connects to an ATG console (or simulator) over TCP,
