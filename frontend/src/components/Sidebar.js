@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   LayoutDashboard,
   Truck,
@@ -45,9 +45,9 @@ function Sidebar({ activeTab, setActiveTab, darkMode, setDarkMode, user, onSignO
 
       {/* Logo */}
       <div style={styles.logoSection}>
-        <Fuel size={26} color="#4CAF50" style={styles.logoIcon} />
+
         <div>
-          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '28px', marginBottom: '2px' }} />
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '36px', width: '36px', borderRadius: '8px', objectFit: 'cover', marginBottom: '6px' }} />
           <div style={styles.logoTitle}>MafutaFlow Africa</div>
           <div style={styles.logoSub}>Accountability Behind Every Litre</div>
         </div>
