@@ -131,7 +131,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       {/* Navigation bar */}
       <nav className="landing-nav" aria-label="Public navigation">
         <button className="landing-brand" type="button" onClick={() => { goTo('top'); setMenuOpen(false); }}>
-          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '32px', width: '32px', borderRadius: '6px', objectFit: 'cover' }} />
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '44px', width: '44px', borderRadius: '8px', objectFit: 'cover' }} />
           <span>MafutaFlow Africa</span>
         </button>
 
