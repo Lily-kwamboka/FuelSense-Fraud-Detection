@@ -131,8 +131,8 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
       {/* Navigation bar */}
       <nav className="landing-nav" aria-label="Public navigation">
         <button className="landing-brand" type="button" onClick={() => { goTo('top'); setMenuOpen(false); }}>
-          <HexBrandMark />
-          <span>MafutaSala</span>
+          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '32px', width: '32px', borderRadius: '6px', objectFit: 'cover' }} />
+          <span>MafutaFlow Africa</span>
         </button>
 
         {/* Mobile Hamburger Toggle Button */}
@@ -172,7 +172,7 @@ function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
 
         <div className="landing-hero-copy">
           <div className="landing-eyebrow">Fuel operations intelligence</div>
-          <img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '120px', marginBottom: '16px' }} />
+          <div style={{ display: 'inline-block', background: '#ffffff', borderRadius: '16px', padding: '16px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', marginBottom: '20px' }}><img src="/mafutaflow-logo.jpeg" alt="MafutaFlow Africa" style={{ height: '80px', display: 'block' }} /></div>
             <h1>MafutaFlow Africa</h1>
           <p className="landing-hero-line">Stop fuel loss before it becomes a report.</p>
           <p className="landing-hero-sub">
