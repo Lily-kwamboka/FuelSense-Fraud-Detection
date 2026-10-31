@@ -51,27 +51,9 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // STEP 2 — near the top of api.js, after `const app = express();`, add:
 const http = require('http');
-const { Server } = require('socket.io');
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }, // tighten this to your actual FRONTEND_URL in production
-});
 
-io.on('connection', (socket) => {
-  console.log('[WS] Client connected:', socket.id);
-
-  // Clients join a "room" per station so a reading from Station A never
-  // gets broadcast to a browser only watching Station B.
-  socket.on('subscribe-station', (stationId) => {
-    socket.join(`station:${stationId}`);
-    console.log('[WS]', socket.id, 'subscribed to station', stationId);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('[WS] Client disconnected:', socket.id);
-  });
-});
 
 // ── DB ────────────────────────────────────────────────────────────────────────
 const pool = new Pool({ connectionString: DATABASE_URL, max: 10 });
@@ -1396,7 +1378,6 @@ app.delete('/api/admin/suppliers/:id', async (req, res) => {
 const scheduler = require('./scheduler');
 // Pass io to scheduler for broadcasting
 if (scheduler && typeof scheduler.setIO === 'function') {
-  scheduler.setIO(io);
 } else {
   // Fallback: patch the scheduler's pollCycle function to broadcast
   const originalPollCycle = scheduler.pollCycle;
@@ -1408,18 +1389,6 @@ if (scheduler && typeof scheduler.setIO === 'function') {
         const t = result.tank;
         const reading = result.reading;
         const volumes = result.volumes;
-        io.to(`station:${t.station_id}`).emit('tank-reading', {
-          tank_id: t.id,
-          tank_number: t.tank_number,
-          fuel_type: t.fuel_type,
-          innage_mm: reading.innageMm,
-          water_mm: reading.waterMm,
-          temperature_c: reading.tempC,
-          nsv_litres: volumes.nsv_litres,
-          vcf: volumes.vcf,
-          fill_pct: (volumes.nsv_litres / parseFloat(t.capacity_litres)) * 100,
-          recorded_at: new Date().toISOString(),
-        });
       }
       return result;
     };
@@ -1643,7 +1612,7 @@ setTimeout(() => {
     // Pass io to scheduler for broadcasting
     const schedulerModule = require('./scheduler');
     if (schedulerModule && typeof schedulerModule.startScheduler === 'function') {
-      schedulerModule.startScheduler(io);
+      schedulerModule.startScheduler();
     }
     console.log('[API] Scheduler started ✓');
   } catch (err) {
@@ -1984,7 +1953,7 @@ setTimeout(() => {
   try {
     const schedulerModule = require('./scheduler');
     if (schedulerModule && typeof schedulerModule.startScheduler === 'function') {
-      schedulerModule.startScheduler(io);
+      schedulerModule.startScheduler();
     }
     console.log('[API] Scheduler started ✓');
   } catch (err) {
@@ -2169,7 +2138,7 @@ app.put('/api/admin/plans/:id', async (req, res) => {
 // `server.listen(...)` instead, since the HTTP server now wraps both Express
 // AND the WebSocket layer on the same port:
 server.listen(PORT, () => {
-  console.log('[API] MafutaFlow Africa API (HTTP + WebSocket) running on port ' + PORT);
+  console.log('[API] MafutaFlow Africa API (HTTP) running on port ' + PORT);
   console.log('[API] Multi-tenant mode: enabled');
 });
 
