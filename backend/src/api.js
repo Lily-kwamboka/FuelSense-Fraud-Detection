@@ -16,11 +16,18 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
-  'https://MafutaFlow Africa-dashboard.vercel.app',
+  'https://fuel-sense-fraud-detection-opal.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
-  'https://MafutaFlow Africa-fraud-detection.onrender.com'
+  'https://fuelsense-fraud-detection-1.onrender.com',
+  'https://api.mafutaflowafrica.com',
+  'https://mafutaflowafrica.com',
+  'https://admin.mafutaflowafrica.com',
+  'https://api.veralitfuellimited.com',
+  'https://veralitfuellimited.com',
+  'https://www.veralitfuellimited.com',
+  'https://admin.veralitfuellimited.com'
 ];
 
 app.use(cors({
@@ -1010,7 +1017,7 @@ app.post('/api/admin/organizations', async (req, res) => {
         });
 
         const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(owner_email, {
-          redirectTo: process.env.FRONTEND_URL || 'https://MafutaFlow Africa-dashboard.vercel.app',
+          redirectTo: process.env.FRONTEND_URL || 'https://fuel-sense-fraud-detection-opal.vercel.app',
         });
 
         if (error) {
@@ -1425,7 +1432,7 @@ async function sendRenewalReminder(orgId, daysLeft, userEmail, planName) {
   if (!resend) return;
   try {
     await resend.emails.send({
-      from: 'MafutaFlow Africa <noreply@MafutaFlow Africa.com>', to: userEmail,
+      from: 'MafutaFlow Africa <' + (process.env.ALERT_FROM_EMAIL || 'onboarding@resend.dev') + '>', to: userEmail,
       subject: `Your ${planName} plan renews in ${daysLeft} days`,
       html: `<p>Your <strong>${planName}</strong> plan renews in <strong>${daysLeft} days</strong>. <a href="${process.env.FRONTEND_URL}/?tab=pricing">Manage subscription</a></p>`
     });

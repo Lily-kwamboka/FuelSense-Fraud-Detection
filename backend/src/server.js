@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'running', 
     timestamp: new Date().toISOString(),
-    service: 'MafutaFlow Africa-simulator',
+    service: 'mafutaflow-simulator',
     uptime: process.uptime()
   });
 });

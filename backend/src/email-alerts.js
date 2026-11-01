@@ -226,7 +226,7 @@ function wrapHTML(title, content) {
       <p style="color:#999;font-size:12px;margin:0;">
         This is an automated alert from MafutaFlow Africa.
         Log in to your dashboard at
-        <a href="https://MafutaFlow Africa-dashboard.vercel.app" style="color:#1a1a2e;">MafutaFlow Africa-dashboard.vercel.app</a>
+        <a href="${process.env.FRONTEND_URL || 'https://fuel-sense-fraud-detection-opal.vercel.app'}" style="color:#1a1a2e;">MafutaFlow Africa-dashboard.vercel.app</a>
         to view details.
       </p>
     </div>

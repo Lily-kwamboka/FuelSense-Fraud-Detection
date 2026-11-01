@@ -35,7 +35,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
     ]);
 
     const csv = [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    downloadFile('MafutaFlow Africa-deliveries.csv', 'text/csv', csv);
+    downloadFile('mafutaflow-deliveries.csv', 'text/csv', csv);
   }
 
   function exportReconciliationCSV() {
@@ -53,7 +53,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
     ]);
 
     const csv = [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    downloadFile('MafutaFlow Africa-reconciliation.csv', 'text/csv', csv);
+    downloadFile('mafutaflow-reconciliation.csv', 'text/csv', csv);
   }
 
   // ── Export to PDF ──────────────────────────────────────────
@@ -169,7 +169,7 @@ function Reports({ deliveries, reconciliation, tanks, darkMode }) {
       doc.text('Page ' + i + ' of ' + pageCount, 180, 290);
     }
 
-    doc.save('MafutaFlow Africa-report-' + new Date().toISOString().split('T')[0] + '.pdf');
+    doc.save('mafutaflow-report-' + new Date().toISOString().split('T')[0] + '.pdf');
     setExportLoading(false);
   }
 

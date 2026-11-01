@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name:         'MafutaFlow Africa-api',
+      name:         'mafutaflow-api',
       script:       'src/api.js',
       watch:        false,
       restart_delay: 5000,
@@ -11,7 +11,7 @@ module.exports = {
       },
     },
     {
-      name:         'MafutaFlow Africa-scheduler',
+      name:         'mafutaflow-scheduler',
       script:       'src/scheduler.js',
       watch:        false,
       restart_delay: 10000,
@@ -21,7 +21,7 @@ module.exports = {
       },
     },
     {
-      name:         'MafutaFlow Africa-simulator',
+      name:         'mafutaflow-simulator',
       script:       'src/atg-simulator.js',
       watch:        false,
       restart_delay: 5000,

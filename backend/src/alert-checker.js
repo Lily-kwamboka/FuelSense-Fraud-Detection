@@ -39,7 +39,7 @@ async function runAlertCheck() {
     async function markAlertSent(alertKey) {
       await db.query(
         `INSERT INTO audit_log (user_email, user_role, action, entity_type)
-         VALUES ('system@MafutaFlow Africa', 'system', $1, 'alert')`,
+         VALUES ('system@fuelsense', 'system', $1, 'alert')`,
         ['ALERT_' + alertKey]
       );
     }
