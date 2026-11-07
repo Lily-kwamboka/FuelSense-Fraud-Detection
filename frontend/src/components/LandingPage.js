@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './LandingPage.css';
 
 const DEMO_HREF = 'mailto:kwambokalilian59@gmail.com?subject=Book%20a%20MafutaFlow Africa%20Demo';
@@ -90,11 +90,17 @@ const team = [
 
 // Main landing page component
 function LandingPage({ onLoginClick, demoHref = DEMO_HREF }) {
+  useEffect(() => {
+    const ids = { '/how-it-works': 'how', '/pricing': 'pricing', '/team': 'team' };
+    const id = ids[window.location.pathname];
+    if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const goTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.history.pushState({}, document.title, id === 'top' ? '/' : '/' + (id === 'how' ? 'how-it-works' : id));
   };
 
   /* Scroll progress → CSS custom property on :root */

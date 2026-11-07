@@ -38,12 +38,42 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showPublicLogin, setShowPublicLogin] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('login') === '1';
+    return params.get('login') === '1' || window.location.pathname === '/login';
   });
   const [tanks, setTanks] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [reconciliation, setRecon] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const PATH_TAB = { dashboard: 'dashboard', deliveries: 'deliveries', reconciliation: 'reconciliation', shifts: 'shifts', 'pump-vs-dip': 'pump-vs-dip', alerts: 'alerts', audit: 'audit', billing: 'pricing', reports: 'reports', 'payment-result': 'payment-result' };
+  const [activeTab, setActiveTabState] = useState(() => PATH_TAB[window.location.pathname.replace(/^\//, '')] || 'dashboard');
+  const setActiveTab = (id) => {
+    setActiveTabState(id);
+    const path = '/' + (id === 'pricing' ? 'billing' : id);
+    if (window.location.pathname + window.location.search !== path) {
+      window.history.pushState({}, document.title, path);
+    }
+  };
+  useEffect(() => {
+    const tabs = { dashboard: 'dashboard', deliveries: 'deliveries', reconciliation: 'reconciliation', shifts: 'shifts', 'pump-vs-dip': 'pump-vs-dip', alerts: 'alerts', audit: 'audit', billing: 'pricing', reports: 'reports', 'payment-result': 'payment-result' };
+    const onPop = () => {
+      const p = window.location.pathname.replace(/^\//, '');
+      if (tabs[p]) setActiveTabState(tabs[p]);
+      if (p === 'login') setShowPublicLogin(true);
+      else if (p === '') setShowPublicLogin(false);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has('signout') || q.get('login') === '1') {
+      window.history.replaceState({}, document.title, (q.get('login') === '1' ? '/login' : '/signout') + window.location.hash);
+    }
+  }, []);
+  useEffect(() => {
+    if (session && ['/', '/login', '/signout'].includes(window.location.pathname)) {
+      window.history.replaceState({}, document.title, '/' + (activeTab === 'pricing' ? 'billing' : activeTab));
+    }
+  }, [session, activeTab]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -262,20 +292,20 @@ function App() {
     document.cookie.split(';').forEach(c => {
       document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
     });
-    window.location.href = window.location.origin + '?signout=' + Date.now();
+    window.location.href = window.location.origin + '/signout';
   }
 
   function openPublicLogin() {
     setShowPublicLogin(true);
     const url = new URL(window.location.href);
-    url.searchParams.set('login', '1');
+    url.search = ''; url.pathname = '/login';
     window.history.pushState({}, document.title, url.pathname + url.search + url.hash);
   }
 
   function returnToLanding() {
     setShowPublicLogin(false);
     const url = new URL(window.location.href);
-    url.searchParams.delete('login');
+    url.search = ''; url.pathname = '/';
     const query = url.searchParams.toString();
     window.history.pushState({}, document.title, url.pathname + (query ? '?' + query : '') + url.hash);
   }

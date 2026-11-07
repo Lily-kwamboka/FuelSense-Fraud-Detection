@@ -67,7 +67,7 @@ function PaymentResult({ darkMode }) {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = '/?tab=billing';
+          window.location.href = '/billing';
           return 0;
         }
         return prev - 1;
@@ -101,7 +101,7 @@ function PaymentResult({ darkMode }) {
   };
 
   const goToBilling = () => {
-    window.location.href = '/?tab=billing';
+    window.location.href = '/billing';
   };
 
   if (status === 'processing') {
